@@ -10,6 +10,8 @@ from mfem.ser import intArray
 from os.path import expanduser, join
 import numpy as np
 
+path = "~/Work/PyMFEM/"
+
 order = 1
 meshfile = expanduser(join(path, 'data', 'star.mesh'))
 mesh = mfem.Mesh(meshfile, 1,1)
@@ -22,7 +24,7 @@ sdim = mesh.SpaceDimension()
 #    NURBS mesh a bit more and then project the curvature to quadratic Nodes.
 if (mesh.NURBSext):
    for i in range(2):
-        mesh.UniformRefinement();
+        mesh.UniformRefinement()
    mesh.SetCurvature(2)
 
 # 4. Define a finite element space on the mesh. The polynomial order is

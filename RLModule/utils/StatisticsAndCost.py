@@ -24,7 +24,7 @@ class StatisticsAndCost:
         self.variance = description.variance
         self.skewness = description.skewness
         self.kurtosis = description.kurtosis
-        self.cost = self.mean + penalty * self.variance
+        self.cost = self.mean + self.penalty * self.variance
         return self.Statistics(self.nobs, self.minmax, self.mean, self.variance, self.skewness, self.kurtosis, self.cost)
 
 ############################################################################

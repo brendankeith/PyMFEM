@@ -5,14 +5,44 @@ from mfem import path
 import mfem.ser as mfem
 from mfem.ser import intArray
 import numpy as np
+import torch
+
+from StatisticsAndCost import StatisticsAndCost
+
 class fem_problem:
     one  = mfem.ConstantCoefficient(1.0)
     zero = mfem.ConstantCoefficient(0.0)
     # constructor
-    def __init__(self, mesh_, order_):
-       self.mesh = mesh_
+    def __init__(self, mesh_, order_, penalty_=1.0):
+       self.initial_mesh = mesh_
+      #  self.mesh = mesh_
        self.order = order_
-       print("Number of Elements in mesh = " + str(self.mesh.GetNE()))
+       self.stats = StatisticsAndCost(penalty_)
+       print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
+
+    def reset(self):
+        self.mesh = mfem.Mesh(self.initial_mesh)
+        self.setup()
+        self.AssembleAndSolve()
+        errors = self.GetLocalErrors()
+        return  self.errors2state(errors)# return initial state
+
+    def errors2state(self, errors):
+        stats = self.stats(errors)
+        state = [stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        return  torch.tensor(state).float()
+
+    def step(self, theta):
+        self.RefineAndUpdate(theta)
+        self.AssembleAndSolve()
+        errors = self.GetLocalErrors()
+        new_state = self.errors2state(errors)
+        stats = self.stats(new_state)
+        cost = stats.cost
+        # done = True
+        done = True if (self.mesh.GetNE() > 1e6) else False
+        info = stats
+        return new_state, cost, done, info
 
     def setup(self):
         print("Setting up Poisson problem ")
@@ -53,11 +83,13 @@ class fem_problem:
       #   print("Poisson problem solved ")
 
     def GetLocalErrors(self):
-        errors = self.estimator.GetLocalErrors() 
+        mfem_errors = self.estimator.GetLocalErrors()
+        # errors = torch.tensor([mfem_errors[i] for i in range(self.mesh.GetNE())])
+        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())])
         return errors
 
     def RefineAndUpdate(self, theta):
-        self.refiner.SetTotalErrorFraction(theta)
+        self.refiner.SetTotalErrorFraction(theta.item())
         self.refiner.Apply(self.mesh)
         self.fespace.Update()
         self.x.Update()
