@@ -23,6 +23,8 @@ import torch.distributions as tdist
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
+from scipy.stats import truncnorm
+
 from StatisticsAndCost import StatisticsAndCost
 # from problem_fem import fem_problem
 from problem_fem import fem_problem
@@ -51,15 +53,35 @@ GAMMA = 0.9
 #         log_prob = torch.log(probs.squeeze(0)[highest_prob_action])
 #         return highest_prob_action, log_prob
 
+
+### NOTE: NEEDS TO BE DEBUGGED!
+class TruncatedNormal():
+
+    def __init__(self, mean, sd, lower_bound=0.0, upper_bound=1.0):
+        self.rv = truncnorm(lower_bound, upper_bound, loc=mean.detach().numpy(), scale=sd.detach().numpy())
+        self.Gaussian = tdist.Normal(mean,sd)
+
+    def sample(self):
+        x = self.rv.rvs()
+        return torch.from_numpy(np.array([x]))
+
+    def log_prob(self, x):
+        # the log of the truncated normal PDF is the same as the log of the normal PDF, up to a scalar
+        # when the gradient is applied, the scalar disappears 
+        return self.Gaussian.log_prob(x)
+
+
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, num_dist_params=2, learning_rate=3e-4):
+    def __init__(self, num_inputs, learning_rate=3e-4):
         super(PolicyNetwork, self).__init__()
 
-        self.linear = nn.Linear(num_inputs, num_dist_params)
+        self.linear = nn.Linear(num_inputs, 2)
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, state):
         x = self.linear(state)
+        # x[1] = torch.exp(x[1])
+        # return x
         return F.softmax(x)
     
     def get_action(self, state):
@@ -68,7 +90,8 @@ class PolicyNetwork(nn.Module):
         # highest_prob_action = np.random.choice(self.num_actions, p=np.squeeze(probs.detach().numpy()))
         # log_prob = torch.log(probs.squeeze(0)[highest_prob_action])
         dist_params = self.forward(state)
-        b = tdist.Beta(dist_params[0],dist_params[1])
+        b = TruncatedNormal(dist_params[0], dist_params[1], torch.Tensor([0.0]), torch.Tensor([1.0]))
+        # b = tdist.Beta(dist_params[0],dist_params[1])
         action = b.sample()
         log_prob = b.log_prob(action)
         return action, log_prob
