@@ -31,34 +31,14 @@ from problem_fem import fem_problem
 
 # Constants
 GAMMA = 0.9
+ORDER = 1
 
-# class PolicyNetwork(nn.Module):
-#     def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
-#         super(PolicyNetwork, self).__init__()
-
-#         self.num_actions = num_actions
-#         self.linear1 = nn.Linear(num_inputs, hidden_size)
-#         self.linear2 = nn.Linear(hidden_size, num_actions)
-#         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-
-#     def forward(self, state):
-#         x = F.relu(self.linear1(state))
-#         x = F.softmax(self.linear2(x), dim=1)
-#         return x 
-    
-#     def get_action(self, state):
-#         state = torch.from_numpy(state).float().unsqueeze(0)
-#         probs = self.forward(Variable(state))
-#         highest_prob_action = np.random.choice(self.num_actions, p=np.squeeze(probs.detach().numpy()))
-#         log_prob = torch.log(probs.squeeze(0)[highest_prob_action])
-#         return highest_prob_action, log_prob
-
-
-### NOTE: NEEDS TO BE DEBUGGED!
 class TruncatedNormal():
 
     def __init__(self, mean, sd, lower_bound=0.0, upper_bound=1.0):
-        self.rv = truncnorm(lower_bound, upper_bound, loc=mean.detach().numpy(), scale=sd.detach().numpy())
+        self.mu = mean.detach().numpy()
+        self.sigma = sd.detach().numpy()
+        self.rv = truncnorm( (lower_bound - self.mu) / self.sigma, (upper_bound - self.mu) / self.sigma, loc=self.mu, scale=self.sigma )
         self.Gaussian = tdist.Normal(mean,sd)
 
     def sample(self):
@@ -72,7 +52,7 @@ class TruncatedNormal():
 
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=3e-4):
+    def __init__(self, num_inputs, learning_rate=1e-3):
         super(PolicyNetwork, self).__init__()
 
         self.linear = nn.Linear(num_inputs, 2)
@@ -80,21 +60,19 @@ class PolicyNetwork(nn.Module):
 
     def forward(self, state):
         x = self.linear(state)
-        # x[1] = torch.exp(x[1])
-        # return x
-        return F.softmax(x)
+        x[1] = torch.exp(x[1])
+        return x
     
     def get_action(self, state):
-        # state = torch.from_numpy(state).float().unsqueeze(0)
-        # probs = self.forward(Variable(state))
-        # highest_prob_action = np.random.choice(self.num_actions, p=np.squeeze(probs.detach().numpy()))
-        # log_prob = torch.log(probs.squeeze(0)[highest_prob_action])
         dist_params = self.forward(state)
-        b = TruncatedNormal(dist_params[0], dist_params[1], torch.Tensor([0.0]), torch.Tensor([1.0]))
-        # b = tdist.Beta(dist_params[0],dist_params[1])
+        b = TruncatedNormal(dist_params[0], dist_params[1])
         action = b.sample()
         log_prob = b.log_prob(action)
-        return action, log_prob
+        return action, log_prob, b.mu, b.sigma
+
+    def reset(self):
+        self.linear.weight.data.fill_(0.0)
+        self.linear.bias.data.fill_(0.5)
 
 def update_policy(policy_network, costs, log_probs):
     discounted_costs = []
@@ -112,7 +90,7 @@ def update_policy(policy_network, costs, log_probs):
 
     policy_gradient = []
     for log_prob, Gt in zip(log_probs, discounted_costs):
-        policy_gradient.append(log_prob * Gt)
+        policy_gradient.append(-log_prob * Gt) ### ??
     
     policy_network.optimizer.zero_grad()
     policy_gradient = torch.stack(policy_gradient).sum()
@@ -122,26 +100,22 @@ def update_policy(policy_network, costs, log_probs):
 
 if __name__ == "__main__":
 
-    # b = tdist.Beta(torch.tensor([0.5]), torch.tensor([0.5]))
-    # action = b.sample()
-    # # next_state, reward = env.step(action)
-    # # loss = -m.log_prob(action) * reward
-    # loss = b.log_prob(action)
-    # loss.backward()
-
-    order = 1
     meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'star.mesh'))
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
 
-    poisson = fem_problem(mesh,order)
+    poisson = fem_problem(mesh,ORDER)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
+    policy_net.reset()
     
-    max_episode_num = 500
-    max_steps = 3
+    max_episode_num = 1000
+    max_steps = 1
     numsteps = []
     all_costs = []
+    actions = []
+    means = []
+    sds = []
 
     for episode in range(max_episode_num):
         # state = env.reset()
@@ -149,9 +123,12 @@ if __name__ == "__main__":
         log_probs = []
         costs = []
 
-        for steps in range(max_steps):
-    #         env.render()
-            action, log_prob = policy_net.get_action(state)
+        for steps in range(1,max_steps+1):
+            # env.render()
+            action, log_prob, mean, sd = policy_net.get_action(state)
+            actions.append(action[0])
+            means.append(mean)
+            sds.append(sd)
             # new_state, cost, done, _ = env.step(action)
             new_state, cost, done, _ = poisson.step(action)
             log_probs.append(log_prob)
@@ -167,7 +144,14 @@ if __name__ == "__main__":
             
             state = new_state
         
-    # plt.plot(numsteps)
-    # plt.plot(avg_numsteps)
-    # plt.xlabel('Episode')
-    # plt.show()
+    fig, ax = plt.subplots(4, sharex=True)
+    ax[0].plot(actions)
+    ax[0].set_ylabel('Theta')
+    ax[1].plot(means)
+    ax[1].set_ylabel('mean')
+    ax[2].semilogy(sds)
+    ax[2].set_ylabel('st. dev.')
+    ax[3].semilogy(all_costs)
+    ax[3].set_ylabel('Cost')
+    ax[3].set_xlabel('Episode')
+    plt.show()
