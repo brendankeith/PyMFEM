@@ -35,20 +35,29 @@ ORDER = 1
 
 class TruncatedNormal():
 
+    # def __init__(self, mean, sd, lower_bound=0.0, upper_bound=1.0):
+    #     self.mu = mean.detach().numpy()
+    #     self.sigma = sd.detach().numpy()
+    #     self.rv = truncnorm( (lower_bound - self.mu) / self.sigma, (upper_bound - self.mu) / self.sigma, loc=self.mu, scale=self.sigma )
+    #     self.Gaussian = tdist.Normal(mean,sd)
     def __init__(self, mean, sd, lower_bound=0.0, upper_bound=1.0):
         self.mu = mean.detach().numpy()
         self.sigma = sd.detach().numpy()
         self.rv = truncnorm( (lower_bound - self.mu) / self.sigma, (upper_bound - self.mu) / self.sigma, loc=self.mu, scale=self.sigma )
-        self.Gaussian = tdist.Normal(mean,sd)
+        # 
+        self.phi = lambda x: 1/np.sqrt(2*np.pi)*torch.exp(-0.5*x**2)
+        self.Phi = lambda x: 0.5*(1+torch.erf(x/np.sqrt(2)))
+        self.pdf = lambda theta: 1/sd * self.phi((theta - mean)/sd) /   \
+        (self.Phi((upper_bound - mean)/sd) - self.Phi((lower_bound - mean)/sd))
 
     def sample(self):
         x = self.rv.rvs()
         return torch.from_numpy(np.array([x]))
 
     def log_prob(self, x):
-        # the log of the truncated normal PDF is the same as the log of the normal PDF, up to a scalar
-        # when the gradient is applied, the scalar disappears 
-        return self.Gaussian.log_prob(x)
+        # return self.Gaussian.log_prob(x)
+        
+        return torch.log(self.pdf(x))
 
 
 class PolicyNetwork(nn.Module):
@@ -68,7 +77,8 @@ class PolicyNetwork(nn.Module):
         b = TruncatedNormal(dist_params[0], dist_params[1])
         action = b.sample()
         log_prob = b.log_prob(action)
-        return action, log_prob, b.mu, b.sigma
+        # return action, log_prob, b.mu, b.sigma
+        return action, log_prob, dist_params[0], b.sigma
 
     def reset(self):
         self.linear.weight.data.fill_(0.0)
@@ -85,12 +95,12 @@ def update_policy(policy_network, costs, log_probs):
             pw = pw + 1
         discounted_costs.append(Gt)
         
-    discounted_costs = torch.tensor(discounted_costs)
+    # discounted_costs = torch.tensor(discounted_costs)
     # discounted_costs = (discounted_costs - discounted_costs.mean()) / (discounted_costs.std() + 1e-9) # normalize discounted rewards
 
     policy_gradient = []
     for log_prob, Gt in zip(log_probs, discounted_costs):
-        policy_gradient.append(-log_prob * Gt) ### ??
+        policy_gradient.append(log_prob * Gt) ### ??
     
     policy_network.optimizer.zero_grad()
     policy_gradient = torch.stack(policy_gradient).sum()
@@ -104,12 +114,13 @@ if __name__ == "__main__":
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
 
-    poisson = fem_problem(mesh,ORDER)
+    penalty = 1
+    poisson = fem_problem(mesh,ORDER,penalty)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     policy_net.reset()
     
-    max_episode_num = 1000
+    max_episode_num = 5000
     max_steps = 1
     numsteps = []
     all_costs = []
@@ -127,19 +138,24 @@ if __name__ == "__main__":
             # env.render()
             action, log_prob, mean, sd = policy_net.get_action(state)
             actions.append(action[0])
-            means.append(mean)
+            means.append(mean.detach().numpy())
             sds.append(sd)
             # new_state, cost, done, _ = env.step(action)
             new_state, cost, done, _ = poisson.step(action)
+            if episode % 500 == 0 and episode < 5001:
+                poisson.PlotSolution()
+
             log_probs.append(log_prob)
-            costs.append(cost)
+            costs.append(torch.tensor([cost])+1e3*torch.maximum(torch.tensor([0]),mean-1))
+            # costs.append(cost)
 
             if done or steps == max_steps:
                 update_policy(policy_net, costs, log_probs)
                 numsteps.append(steps)
-                all_costs.append(np.sum(costs))
+                all_costs.append(np.sum(costs[0].detach().numpy()))
                 if episode % 1 == 0:
-                    sys.stdout.write("episode: {}, total cost: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.sum(costs), decimals = 3),  np.round(np.mean(all_costs[-10:]), decimals = 3), steps))
+                    # sys.stdout.write("episode: {}, episode/total cost: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.sum(costs.detach().numpy()), decimals = 10),  np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
+                    sys.stdout.write("episode: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
                 break
             
             state = new_state
@@ -151,7 +167,11 @@ if __name__ == "__main__":
     ax[1].set_ylabel('mean')
     ax[2].semilogy(sds)
     ax[2].set_ylabel('st. dev.')
-    ax[3].semilogy(all_costs)
+    ax[3].plot(all_costs)
     ax[3].set_ylabel('Cost')
     ax[3].set_xlabel('Episode')
     plt.show()
+
+
+
+

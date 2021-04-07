@@ -17,7 +17,7 @@ class StatisticsAndCost:
                              'kurtosis', 'cost'))
 
     def __call__(self, eta):
-        description = describe(eta,bias=False)
+        description = describe(np.log(eta),bias=False)
         self.nobs = description.nobs
         self.minmax = description.minmax
         self.mean = description.mean

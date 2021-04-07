@@ -37,15 +37,19 @@ class fem_problem:
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         new_state = self.errors2state(errors)
-        stats = self.stats(new_state)
-        cost = stats.cost
+
+        cost = self.errors2cost(errors)
         # done = True
         done = True if (self.mesh.GetNE() > 1e6) else False
-        info = stats
+        info = None
         return new_state, cost, done, info
 
+    def errors2cost(self, errors):
+        stats = self.stats(errors)
+        return stats.cost
+
     def setup(self):
-        print("Setting up Poisson problem ")
+        # print("Setting up Poisson problem ")
         dim = self.mesh.Dimension()
         fec = mfem.H1_FECollection(self.order, dim)
         self.fespace = mfem.FiniteElementSpace(self.mesh, fec)
@@ -78,7 +82,7 @@ class fem_problem:
         self.a.FormLinearSystem(ess_tdof_list, self.x, self.b, A, X, B, 1)
         AA = mfem.OperatorHandle2SparseMatrix(A)     
         M = mfem.GSSmoother(AA)
-        mfem.PCG(AA, M, B, X, 3, 200, 1e-12, 0.0)
+        mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
       #   print("Poisson problem solved ")
 
@@ -97,6 +101,10 @@ class fem_problem:
         self.b.Update()
       #   print("Mesh refined and updated ")
 
+    def PlotSolution(self):
+      sol_sock = mfem.socketstream("localhost", 19916)
+      sol_sock.precision(8)
+      sol_sock.send_solution(self.mesh,  self.x)
 
 
 
