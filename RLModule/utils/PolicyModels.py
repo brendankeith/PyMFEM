@@ -35,11 +35,6 @@ ORDER = 1
 
 class TruncatedNormal():
 
-    # def __init__(self, mean, sd, lower_bound=0.0, upper_bound=1.0):
-    #     self.mu = mean.detach().numpy()
-    #     self.sigma = sd.detach().numpy()
-    #     self.rv = truncnorm( (lower_bound - self.mu) / self.sigma, (upper_bound - self.mu) / self.sigma, loc=self.mu, scale=self.sigma )
-    #     self.Gaussian = tdist.Normal(mean,sd)
     def __init__(self, mean, sd, lower_bound=0.0, upper_bound=1.0):
         self.mu = mean.detach().numpy()
         self.sigma = sd.detach().numpy()
@@ -55,8 +50,6 @@ class TruncatedNormal():
         return torch.from_numpy(np.array([x]))
 
     def log_prob(self, x):
-        # return self.Gaussian.log_prob(x)
-        
         return torch.log(self.pdf(x))
 
 
@@ -81,7 +74,7 @@ class PolicyNetwork(nn.Module):
         return action, log_prob, dist_params[0], b.sigma
 
     def reset(self):
-        self.linear.weight.data.fill_(0.0)
+        self.linear.weight.data.fill_(0.0001)
         self.linear.bias.data.fill_(0.5)
 
 def update_policy(policy_network, costs, log_probs):
@@ -100,7 +93,7 @@ def update_policy(policy_network, costs, log_probs):
 
     policy_gradient = []
     for log_prob, Gt in zip(log_probs, discounted_costs):
-        policy_gradient.append(log_prob * Gt) ### ??
+        policy_gradient.append(log_prob * Gt)
     
     policy_network.optimizer.zero_grad()
     policy_gradient = torch.stack(policy_gradient).sum()
@@ -110,17 +103,18 @@ def update_policy(policy_network, costs, log_probs):
 
 if __name__ == "__main__":
 
-    meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'star.mesh'))
+    meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'l-shape.mesh'))
+    # meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'star.mesh'))
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
 
-    penalty = 1
+    penalty = 0.0
     poisson = fem_problem(mesh,ORDER,penalty)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     policy_net.reset()
     
-    max_episode_num = 5000
+    max_episode_num = 10000
     max_steps = 1
     numsteps = []
     all_costs = []
@@ -146,7 +140,8 @@ if __name__ == "__main__":
                 poisson.PlotSolution()
 
             log_probs.append(log_prob)
-            costs.append(torch.tensor([cost])+1e3*torch.maximum(torch.tensor([0]),mean-1))
+            costs.append(torch.tensor([cost]) + 1e3*torch.maximum(torch.tensor([0]),mean-1) + 1e3*torch.maximum(torch.tensor([0]),-mean))
+            # costs.append(torch.tensor([cost])+1e3*torch.maximum(torch.tensor([0]),mean-1))
             # costs.append(cost)
 
             if done or steps == max_steps:
