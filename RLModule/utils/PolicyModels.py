@@ -47,14 +47,15 @@ class TruncatedNormal():
 
     def sample(self):
         x = self.rv.rvs()
-        return torch.from_numpy(np.array([x]))
+        return torch.from_numpy(x)
+        # return torch.from_numpy(np.array([x]))
 
     def log_prob(self, x):
         return torch.log(self.pdf(x))
 
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=1e-4):
+    def __init__(self, num_inputs, learning_rate=1e-2):
         super(PolicyNetwork, self).__init__()
 
         self.linear = nn.Linear(num_inputs, 2)
@@ -62,16 +63,17 @@ class PolicyNetwork(nn.Module):
 
     def forward(self, state):
         x = self.linear(state)
-        x[1] = torch.exp(x[1]-2)
+        x[1] = torch.exp(x[1])
         return x
     
     def get_action(self, state):
         dist_params = self.forward(state)
-        b = TruncatedNormal(dist_params[0], dist_params[1])
+        b = tdist.Normal(dist_params[0], dist_params[1])
+        # b = TruncatedNormal(dist_params[0], dist_params[1])
         action = b.sample()
         log_prob = b.log_prob(action)
         # return action, log_prob, b.mu, b.sigma
-        return action, log_prob, dist_params[0], b.sigma
+        return torch.sigmoid(action), log_prob, torch.sigmoid(dist_params[0]), dist_params[1].detach().numpy()
 
     def reset(self):
         self.linear.weight.data.fill_(0.01)
@@ -108,14 +110,14 @@ if __name__ == "__main__":
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
 
-    penalty = 0.0
+    penalty = 1.0e1
     poisson = fem_problem(mesh,ORDER,penalty)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
-    policy_net.reset()
+    # policy_net.reset()
     
-    max_episode_num = 5000
-    max_steps = 3
+    max_episode_num = 2000
+    max_steps = 1
     numsteps = []
     all_costs = []
     actions = []
@@ -131,7 +133,8 @@ if __name__ == "__main__":
         for steps in range(1,max_steps+1):
             # env.render()
             action, log_prob, mean, sd = policy_net.get_action(state)
-            actions.append(action[0])
+            actions.append(action)
+            # actions.append(action[0])
             means.append(mean.detach().numpy())
             sds.append(sd)
             # new_state, cost, done, _ = env.step(action)
@@ -140,7 +143,8 @@ if __name__ == "__main__":
                 poisson.PlotSolution()
 
             log_probs.append(log_prob)
-            costs.append(torch.tensor([cost]) + 1e3*torch.maximum(torch.tensor([0]),mean-1) + 1e3*torch.maximum(torch.tensor([0]),-mean))
+            costs.append(torch.tensor([cost]))
+            # costs.append(torch.tensor([cost]) + 1e3*torch.maximum(torch.tensor([0]),mean-1) + 1e3*torch.maximum(torch.tensor([0]),-mean))
             # costs.append(torch.tensor([cost])+1e3*torch.maximum(torch.tensor([0]),mean-1))
             # costs.append(cost)
 

@@ -23,10 +23,10 @@ mesh.UniformRefinement()
 # mesh.UniformRefinement()
 # mesh.UniformRefinement()
 
-penalty = 1e3
+penalty = 1e1
 poisson = fem_problem(mesh,ORDER,penalty)
 
-max_steps = 4
+max_steps = 1
 
 def f(action):
     cost = 0.0
