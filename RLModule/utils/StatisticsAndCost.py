@@ -18,15 +18,22 @@ class StatisticsAndCost:
 
     def __call__(self, eta):
         # description = describe(eta,bias=False)
-        description = describe(np.log(eta) + np.log(len(eta)),bias=False)
+        e = len(eta)*np.abs(eta)**2
+        # description = describe(e,bias=False)
+        description = describe(np.log(e),bias=False)
+        # description = describe(np.log(eta) + np.log(len(eta)),bias=False)
         self.nobs = description.nobs
         self.minmax = description.minmax
         self.mean = description.mean
         self.variance = description.variance
         self.skewness = description.skewness
         self.kurtosis = description.kurtosis
-        # self.cost = self.variance
-        self.cost = self.mean + self.penalty * np.sqrt(self.variance)
+        # self.cost = self.mean
+        # self.cost = np.sqrt(self.variance) / self.mean
+        self.cost = self.variance / self.mean
+        # self.cost = 1.0/(1.0/self.variance + 1.0/self.mean)
+        # self.cost = self.mean + self.penalty * self.variance
+        # self.cost = self.mean + self.penalty * np.sqrt(self.variance)
         return self.Statistics(self.nobs, self.minmax, self.mean, self.variance, self.skewness, self.kurtosis, self.cost)
 
 ############################################################################

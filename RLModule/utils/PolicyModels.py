@@ -54,7 +54,7 @@ class TruncatedNormal():
 
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=1e-3):
+    def __init__(self, num_inputs, learning_rate=1e-4):
         super(PolicyNetwork, self).__init__()
 
         self.linear = nn.Linear(num_inputs, 2)
@@ -62,7 +62,7 @@ class PolicyNetwork(nn.Module):
 
     def forward(self, state):
         x = self.linear(state)
-        x[1] = torch.exp(x[1])
+        x[1] = torch.exp(x[1]-2)
         return x
     
     def get_action(self, state):
@@ -74,7 +74,7 @@ class PolicyNetwork(nn.Module):
         return action, log_prob, dist_params[0], b.sigma
 
     def reset(self):
-        self.linear.weight.data.fill_(0.0001)
+        self.linear.weight.data.fill_(0.01)
         self.linear.bias.data.fill_(0.5)
 
 def update_policy(policy_network, costs, log_probs):
@@ -114,8 +114,8 @@ if __name__ == "__main__":
     policy_net = PolicyNetwork(4)
     policy_net.reset()
     
-    max_episode_num = 10000
-    max_steps = 1
+    max_episode_num = 5000
+    max_steps = 3
     numsteps = []
     all_costs = []
     actions = []
