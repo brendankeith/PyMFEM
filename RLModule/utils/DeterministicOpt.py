@@ -20,10 +20,9 @@ GAMMA = 0.9
 meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'l-shape.mesh'))
 mesh = mfem.Mesh(meshfile, 1,1)
 mesh.UniformRefinement()
-# mesh.UniformRefinement()
-# mesh.UniformRefinement()
 
-penalty = 1e1
+# penalty = 1e1
+penalty = 0.
 poisson = fem_problem(mesh,ORDER,penalty)
 
 max_steps = 1

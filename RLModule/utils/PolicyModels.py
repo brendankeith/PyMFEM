@@ -55,7 +55,7 @@ class TruncatedNormal():
 
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=1e-2):
+    def __init__(self, num_inputs, learning_rate=1e-4):
         super(PolicyNetwork, self).__init__()
 
         self.linear = nn.Linear(num_inputs, 2)
@@ -110,7 +110,8 @@ if __name__ == "__main__":
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
 
-    penalty = 1.0e1
+    # penalty = 1.0e1
+    penalty = 0.0
     poisson = fem_problem(mesh,ORDER,penalty)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
@@ -139,8 +140,8 @@ if __name__ == "__main__":
             sds.append(sd)
             # new_state, cost, done, _ = env.step(action)
             new_state, cost, done, _ = poisson.step(action)
-            if episode % 500 == 0 and episode < 5001:
-                poisson.PlotSolution()
+            # if episode % 500 == 0 and episode < 5001:
+            #     poisson.PlotSolution()
 
             log_probs.append(log_prob)
             costs.append(torch.tensor([cost]))
