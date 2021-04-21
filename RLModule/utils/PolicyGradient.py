@@ -70,7 +70,7 @@ if __name__ == "__main__":
     policy_net = PolicyNetwork(4)
     # policy_net.reset()
     
-    max_episode_num = 1000
+    max_episode_num = 100000
     max_steps = 1
     numsteps = []
     all_costs = []

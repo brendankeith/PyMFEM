@@ -20,6 +20,7 @@ GAMMA = 0.9
 meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'l-shape.mesh'))
 mesh = mfem.Mesh(meshfile, 1,1)
 mesh.UniformRefinement()
+# mesh.UniformRefinement()
 
 # penalty = 1e1
 penalty = 0.
@@ -32,11 +33,9 @@ def f(action):
     poisson.reset()
     for steps in range(max_steps):
         _, tmp_cost, _, _ = poisson.step(action)
-        cost = tmp_cost
-        # cost += GAMMA**steps * tmp_cost
+        # cost = tmp_cost
+        cost += GAMMA**steps * tmp_cost
     nel = poisson.mesh.GetNE()
-    # if nel > 400:
-        # cost = 0.0
     return cost
 
 res = minimize_scalar(f, bounds=(0, 1), method='bounded')
@@ -48,4 +47,6 @@ xx = np.linspace(0,1,500)
 ff = np.array([f(x) for x in xx])
 
 plt.plot(xx,ff)
+plt.xlabel('theta')
+plt.ylabel('cost')
 plt.show()

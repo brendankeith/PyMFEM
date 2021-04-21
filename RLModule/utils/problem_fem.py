@@ -36,13 +36,12 @@ class fem_problem:
         self.RefineAndUpdate(theta)
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
-        new_state = self.errors2state(errors)
-
+        state = self.errors2state(errors)
         cost = self.errors2cost(errors)
         # done = True
         done = True if (self.mesh.GetNE() > 1e6) else False
         info = None
-        return new_state, cost, done, info
+        return state, cost, done, info
 
     def errors2cost(self, errors):
         stats = self.stats(errors)
