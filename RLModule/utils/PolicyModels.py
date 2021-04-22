@@ -22,16 +22,16 @@ from torch.autograd import Variable
 from scipy.stats import truncnorm
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=1e-6):
+    def __init__(self, num_inputs, learning_rate=1e-2):
         super(PolicyNetwork, self).__init__()
 
         # self.linear = nn.Linear(num_inputs, 2)
-        self.mu = torch.nn.Parameter(torch.randn(()))
-        self.sigma = torch.nn.Parameter(torch.randn(()))
+        self.mu = nn.Parameter(torch.randn(()))
+        self.sigma = nn.Parameter(torch.randn(()))
 
-        # self.optimizer = optim.SGD(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.SGD(self.parameters(), lr=learning_rate)
         # self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        # self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
 
     def forward(self, state):
@@ -41,16 +41,18 @@ class PolicyNetwork(nn.Module):
         # x[1] = 0.01
         # return x
         return self.mu, torch.exp(self.sigma)
+        # return self.mu, torch.tensor(0.01)
     
     def get_action(self, state):
         dist_params = self.forward(state)
         b = tdist.Normal(dist_params[0], dist_params[1])
         # b = TruncatedNormal(dist_params[0], dist_params[1])
         action = b.sample()
-        # log_prob = b.log_prob(action)
-        log_prob = b.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
+        log_prob = b.log_prob(action)
+        # log_prob = b.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
         # return action, log_prob, b.mu, b.sigma
-        return torch.sigmoid(action), log_prob, torch.sigmoid(dist_params[0]), dist_params[1].detach().numpy()
+        # return torch.sigmoid(action), log_prob, torch.sigmoid(dist_params[0]), dist_params[1].detach().numpy()
+        return action, log_prob, dist_params[0].item(), dist_params[1].item()
 
     def reset(self):
         self.linear.weight.data.fill_(0.01)

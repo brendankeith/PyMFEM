@@ -26,13 +26,14 @@ from scipy.stats import truncnorm
 
 from StatisticsAndCost import StatisticsAndCost
 from problem_fem import fem_problem
+from toy_problem import toy_problem
 from PolicyModels import PolicyNetwork
 
 # Constants
 GAMMA = 0.9
 ORDER = 1
 
-def update_policy(policy_network, costs, log_probs):
+def update_policy(policy_network, costs, log_probs, update=True):
     discounted_costs = []
 
     for t in range(len(costs)):
@@ -50,10 +51,11 @@ def update_policy(policy_network, costs, log_probs):
     for log_prob, Gt in zip(log_probs, discounted_costs):
         policy_gradient.append(log_prob * Gt)
     
-    policy_network.optimizer.zero_grad()
+    # policy_network.optimizer.zero_grad()
     policy_gradient = torch.stack(policy_gradient).sum()
     policy_gradient.backward()
-    policy_network.optimizer.step()
+    if update:
+        policy_network.optimizer.step()
 
 
 if __name__ == "__main__":
@@ -65,12 +67,14 @@ if __name__ == "__main__":
 
     # penalty = 1.0e1
     penalty = 0.0
-    poisson = fem_problem(mesh,ORDER,penalty)
+    # env = fem_problem(mesh,ORDER,penalty)
+    env = toy_problem()
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     # policy_net.reset()
     
-    max_episode_num = 100000
+    max_episode_num = 1000
+    batch_size = 10
     max_steps = 1
     numsteps = []
     all_costs = []
@@ -78,33 +82,41 @@ if __name__ == "__main__":
     means = []
     sds = []
 
-    for episode in range(max_episode_num):
+    for episode in range(1,max_episode_num):
         # state = env.reset()
-        state = poisson.reset()
+        update=False
+        state = env.reset()
         log_probs = []
         costs = []
+
+        if episode % batch_size == 0:
+            update=True
+
+        if batch_size == 1 or episode % batch_size == 1:
+            policy_net.optimizer.zero_grad()
 
         for steps in range(1,max_steps+1):
             # env.render()
             action, log_prob, mean, sd = policy_net.get_action(state)
             actions.append(action)
-            means.append(mean.detach().numpy())
+            means.append(mean)
             sds.append(sd)
             # new_state, cost, done, _ = env.step(action)
-            new_state, cost, done, _ = poisson.step(action)
-            if episode % 500 == 0 and episode < 5001:
-                poisson.PlotSolution()
+            new_state, cost, done, _ = env.step(action)
+            # if episode % 500 == 0 and episode < 5001:
+            #     env.PlotSolution()
 
             log_probs.append(log_prob)
             costs.append(torch.tensor([cost]))
 
             if done or steps == max_steps:
-                update_policy(policy_net, costs, log_probs)
+                update_policy(policy_net, costs, log_probs, update=update)
                 numsteps.append(steps)
                 all_costs.append(np.sum(costs[0].detach().numpy()))
                 if episode % 1 == 0:
                     # sys.stdout.write("episode: {}, episode/total cost: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.sum(costs.detach().numpy()), decimals = 10),  np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
                     sys.stdout.write("episode: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
+                    # sys.stdout.write("action: {}, mean of policy: {}, SD of policy: {}\n\n".format(action, mean, sd))
                 break
             
             state = new_state
