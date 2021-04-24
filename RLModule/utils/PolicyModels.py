@@ -52,7 +52,7 @@ class PolicyNetwork(nn.Module):
         # log_prob = b.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
         # return action, log_prob, b.mu, b.sigma
         # return torch.sigmoid(action), log_prob, torch.sigmoid(dist_params[0]), dist_params[1].detach().numpy()
-        return action, log_prob, dist_params[0].item(), dist_params[1].item()
+        return action, log_prob, dist_params[0], dist_params[1]
 
     def reset(self):
         self.linear.weight.data.fill_(0.01)

@@ -33,7 +33,7 @@ from PolicyModels import PolicyNetwork
 GAMMA = 0.9
 ORDER = 1
 
-def update_policy(policy_network, costs, log_probs, update=True):
+def update_policy(policy_network, costs, log_probs, mean=torch.tensor(0.0), update=True):
     discounted_costs = []
 
     for t in range(len(costs)):
@@ -52,7 +52,8 @@ def update_policy(policy_network, costs, log_probs, update=True):
         policy_gradient.append(log_prob * Gt)
     
     # policy_network.optimizer.zero_grad()
-    policy_gradient = torch.stack(policy_gradient).sum()
+    policy_gradient = torch.stack(policy_gradient).sum() + 1e-4*mean**2
+    # policy_gradient = torch.stack(policy_gradient).sum() + 1e-4*torch.sigmoid(mean)**2
     policy_gradient.backward()
     if update:
         policy_network.optimizer.step()
@@ -99,8 +100,8 @@ if __name__ == "__main__":
             # env.render()
             action, log_prob, mean, sd = policy_net.get_action(state)
             actions.append(action)
-            means.append(mean)
-            sds.append(sd)
+            means.append(mean.item())
+            sds.append(sd.item())
             # new_state, cost, done, _ = env.step(action)
             new_state, cost, done, _ = env.step(action)
             # if episode % 500 == 0 and episode < 5001:
@@ -110,7 +111,8 @@ if __name__ == "__main__":
             costs.append(torch.tensor([cost]))
 
             if done or steps == max_steps:
-                update_policy(policy_net, costs, log_probs, update=update)
+                # update_policy(policy_net, costs, log_probs, update=update)
+                update_policy(policy_net, costs, log_probs, mean=mean, update=update)
                 numsteps.append(steps)
                 all_costs.append(np.sum(costs[0].detach().numpy()))
                 if episode % 1 == 0:
