@@ -22,7 +22,7 @@ from torch.autograd import Variable
 from scipy.stats import truncnorm
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=1e-2, weight_decay=0.0):
+    def __init__(self, num_inputs, learning_rate=1e-3, weight_decay=0.0):
         super(PolicyNetwork, self).__init__()
 
         # self.linear = nn.Linear(num_inputs, 2)
@@ -40,6 +40,7 @@ class PolicyNetwork(nn.Module):
         # x[1] = torch.exp(x[1])
         # x[1] = 0.01
         # return x
+        # return torch.sigmoid(self.mu), torch.exp(self.log_sigma)
         return self.mu, torch.exp(self.log_sigma)
         # return self.mu, torch.tensor(0.01)
     
@@ -53,14 +54,15 @@ class PolicyNetwork(nn.Module):
         # regularization = 1e0*torch.sigmoid(dist_params[0])**2
         # regularization = 1e-4* ( dist_params[0]**2 + dist_params[1]**2 )
         regularization = torch.tensor(0.0)
-        # return torch.sigmoid(action), log_prob, \
-            #    dist_params[0], dist_params[1], regularization
-        return action, log_prob, dist_params[0], dist_params[1], regularization
+        return torch.sigmoid(action), log_prob, \
+               dist_params[0], dist_params[1], regularization
+
+        # return action, log_prob, dist_params[0], dist_params[1], regularization
 
     def reset(self):
         # self.linear.weight.data.fill_(0.01)
         # self.linear.bias.data.fill_(0.5)
-        # self.mu.data = torch.tensor(0.0)
+        self.mu.data = torch.tensor(0.5)
         self.log_sigma.data = torch.log(torch.tensor(0.1))
 
 

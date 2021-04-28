@@ -67,7 +67,7 @@ if __name__ == "__main__":
     # penalty = 1.0e1
     penalty = 0.0
     env = fem_problem(mesh,ORDER,penalty)
-    env = toy_problem()
+    # env = toy_problem()
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     # policy_net.reset()
@@ -97,6 +97,7 @@ if __name__ == "__main__":
         for steps in range(1,max_steps+1):
             # env.render()
             action, log_prob, mean, sd, regularization = policy_net.get_action(state)
+            # actions.append(action)
             actions.append(action)
             means.append(mean.item())
             sds.append(sd.item())

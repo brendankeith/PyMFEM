@@ -33,7 +33,13 @@ class fem_problem:
         return  torch.tensor(state).float()
 
     def step(self, theta):
-        self.RefineAndUpdate(theta)
+        th_temp = theta.detach().numpy().item()
+        if th_temp < 0. :
+          th_temp = 0.
+        if th_temp > 1. :
+          th_temp = 1. 
+
+        self.RefineAndUpdate(th_temp)
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         state = self.errors2state(errors)
@@ -92,7 +98,8 @@ class fem_problem:
         return errors
 
     def RefineAndUpdate(self, theta):
-        self.refiner.SetTotalErrorFraction(theta.item())
+        # self.refiner.SetTotalErrorFraction(theta.item())
+        self.refiner.SetTotalErrorFraction(theta)
         self.refiner.Apply(self.mesh)
         self.fespace.Update()
         self.x.Update()
