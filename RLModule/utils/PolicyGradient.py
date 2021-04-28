@@ -33,7 +33,7 @@ from PolicyModels import PolicyNetwork
 GAMMA = 0.9
 ORDER = 1
 
-def update_policy(policy_network, costs, log_probs, mean=torch.tensor(0.0), update=True):
+def update_policy(policy_network, costs, log_probs, regularization=torch.tensor(0.0), update=True):
     discounted_costs = []
 
     for t in range(len(costs)):
@@ -51,9 +51,7 @@ def update_policy(policy_network, costs, log_probs, mean=torch.tensor(0.0), upda
     for log_prob, Gt in zip(log_probs, discounted_costs):
         policy_gradient.append(log_prob * Gt)
     
-    # policy_network.optimizer.zero_grad()
-    policy_gradient = torch.stack(policy_gradient).sum() + 1e-4*mean**2
-    # policy_gradient = torch.stack(policy_gradient).sum() + 1e-4*torch.sigmoid(mean)**2
+    policy_gradient = torch.stack(policy_gradient).sum() + regularization
     policy_gradient.backward()
     if update:
         policy_network.optimizer.step()
@@ -68,13 +66,13 @@ if __name__ == "__main__":
 
     # penalty = 1.0e1
     penalty = 0.0
-    # env = fem_problem(mesh,ORDER,penalty)
+    env = fem_problem(mesh,ORDER,penalty)
     env = toy_problem()
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     # policy_net.reset()
     
-    max_episode_num = 1000
+    max_episode_num = 5000
     batch_size = 10
     max_steps = 1
     numsteps = []
@@ -84,11 +82,11 @@ if __name__ == "__main__":
     sds = []
 
     for episode in range(1,max_episode_num):
-        # state = env.reset()
-        update=False
+
         state = env.reset()
         log_probs = []
         costs = []
+        update=False
 
         if episode % batch_size == 0:
             update=True
@@ -98,7 +96,7 @@ if __name__ == "__main__":
 
         for steps in range(1,max_steps+1):
             # env.render()
-            action, log_prob, mean, sd = policy_net.get_action(state)
+            action, log_prob, mean, sd, regularization = policy_net.get_action(state)
             actions.append(action)
             means.append(mean.item())
             sds.append(sd.item())
@@ -110,9 +108,12 @@ if __name__ == "__main__":
             log_probs.append(log_prob)
             costs.append(torch.tensor([cost]))
 
+            # cost /= batch_size
+            # regularization /= batch_size
+
             if done or steps == max_steps:
                 # update_policy(policy_net, costs, log_probs, update=update)
-                update_policy(policy_net, costs, log_probs, mean=mean, update=update)
+                update_policy(policy_net, costs, log_probs, regularization=regularization, update=update)
                 numsteps.append(steps)
                 all_costs.append(np.sum(costs[0].detach().numpy()))
                 if episode % 1 == 0:
@@ -127,7 +128,8 @@ if __name__ == "__main__":
     ax[0].plot(actions)
     ax[0].set_ylabel('Theta')
     ax[1].plot(means)
-    ax[1].set_ylabel('sigmoid(mu)')
+    ax[1].set_ylabel('means')
+    # ax[1].set_ylabel('sigmoid(mu)')
     ax[2].semilogy(sds)
     ax[2].set_ylabel('sigma')
     ax[3].plot(all_costs)

@@ -21,8 +21,8 @@ class toy_problem:
     def step(self, action):
         dist = tdist.Normal(action,self.sd)
         state = dist.sample()
-        # cost = (state - self.minimum)**2
-        cost = torch.floor((state - self.minimum)**2)
+        cost = (state - self.minimum)**2
+        # cost = torch.floor((state - self.minimum)**2)
         done = True
         info = None
         return state, cost, done, info

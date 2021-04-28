@@ -22,16 +22,16 @@ from torch.autograd import Variable
 from scipy.stats import truncnorm
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, num_inputs, learning_rate=1e-2):
+    def __init__(self, num_inputs, learning_rate=1e-2, weight_decay=0.0):
         super(PolicyNetwork, self).__init__()
 
         # self.linear = nn.Linear(num_inputs, 2)
         self.mu = nn.Parameter(torch.randn(()))
-        self.sigma = nn.Parameter(torch.randn(()))
+        self.log_sigma = nn.Parameter(torch.randn(()))
 
-        self.optimizer = optim.SGD(self.parameters(), lr=learning_rate)
-        # self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
-        # self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.SGD(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        # self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        # self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
 
     def forward(self, state):
@@ -40,7 +40,7 @@ class PolicyNetwork(nn.Module):
         # x[1] = torch.exp(x[1])
         # x[1] = 0.01
         # return x
-        return self.mu, torch.exp(self.sigma)
+        return self.mu, torch.exp(self.log_sigma)
         # return self.mu, torch.tensor(0.01)
     
     def get_action(self, state):
@@ -50,13 +50,18 @@ class PolicyNetwork(nn.Module):
         action = b.sample()
         log_prob = b.log_prob(action)
         # log_prob = b.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
-        # return action, log_prob, b.mu, b.sigma
-        # return torch.sigmoid(action), log_prob, torch.sigmoid(dist_params[0]), dist_params[1].detach().numpy()
-        return action, log_prob, dist_params[0], dist_params[1]
+        # regularization = 1e0*torch.sigmoid(dist_params[0])**2
+        # regularization = 1e-4* ( dist_params[0]**2 + dist_params[1]**2 )
+        regularization = torch.tensor(0.0)
+        # return torch.sigmoid(action), log_prob, \
+            #    dist_params[0], dist_params[1], regularization
+        return action, log_prob, dist_params[0], dist_params[1], regularization
 
     def reset(self):
-        self.linear.weight.data.fill_(0.01)
-        self.linear.bias.data.fill_(0.5)
+        # self.linear.weight.data.fill_(0.01)
+        # self.linear.bias.data.fill_(0.5)
+        # self.mu.data = torch.tensor(0.0)
+        self.log_sigma.data = torch.log(torch.tensor(0.1))
 
 
 

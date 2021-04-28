@@ -21,6 +21,8 @@ meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'l-shape.
 mesh = mfem.Mesh(meshfile, 1,1)
 mesh.UniformRefinement()
 # mesh.UniformRefinement()
+# mesh.UniformRefinement()
+# mesh.UniformRefinement()
 
 # penalty = 1e1
 penalty = 0.
@@ -35,7 +37,7 @@ def f(action):
         _, tmp_cost, _, _ = poisson.step(action)
         # cost = tmp_cost
         cost += GAMMA**steps * tmp_cost
-    nel = poisson.mesh.GetNE()
+    # nel = poisson.mesh.GetNE()
     return cost
 
 res = minimize_scalar(f, bounds=(0, 1), method='bounded')
