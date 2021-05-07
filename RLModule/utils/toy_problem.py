@@ -4,15 +4,16 @@
 import numpy as np
 import torch
 import torch.distributions as tdist
+from FEM_env import FEM_env
 
-class toy_problem:
+class toy_problem(FEM_env):
 
     # constructor
-    def __init__(self, minimum=4.0, initial_state=10.0, sd=0.1):
-        self.minimum = minimum
-        # self.minimum = torch.tensor(minimum)
-        self.intitial_state = initial_state
-        self.sd = sd
+    def __init__(self, mesh, order):
+        super().__init__(mesh, order)
+        self.minimum = 4.0
+        self.intitial_state = 10.0
+        self.sd = 0.00001
 
     def reset(self):
         initial_state = self.intitial_state
@@ -21,8 +22,9 @@ class toy_problem:
     def step(self, action):
         dist = tdist.Normal(action,self.sd)
         state = dist.sample()
-        cost = (state - self.minimum)**2
+        # cost = (state - self.minimum)**2
         # cost = torch.floor((state - self.minimum)**2)
+        cost = torch.floor(torch.max(torch.tensor([0.]),state - self.minimum)**2)
         done = True
         info = None
         return state, cost, done, info

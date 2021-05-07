@@ -66,14 +66,14 @@ if __name__ == "__main__":
 
     # penalty = 1.0e1
     penalty = 0.0
-    env = fem_problem(mesh,ORDER,penalty)
-    # env = toy_problem()
+    # env = fem_problem(mesh,ORDER,penalty)
+    env = toy_problem(mesh,ORDER)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     # policy_net.reset()
     
-    max_episode_num = 5000
-    batch_size = 10
+    max_episode_num = 4000
+    batch_size = 5
     max_steps = 1
     numsteps = []
     all_costs = []

@@ -40,7 +40,10 @@ class PolicyNetwork(nn.Module):
         # x[1] = torch.exp(x[1])
         # x[1] = 0.01
         # return x
-        # return torch.sigmoid(self.mu), torch.exp(self.log_sigma)
+        # mu = torch.relu(0.99 - torch.relu(0.99-self.mu))
+        # return mu, 0.1*torch.sigmoid(self.log_sigma)
+        # return mu, torch.exp(self.log_sigma)
+        # return torch.relu(self.mu), torch.exp(self.log_sigma)
         return self.mu, torch.exp(self.log_sigma)
         # return self.mu, torch.tensor(0.01)
     
@@ -52,12 +55,13 @@ class PolicyNetwork(nn.Module):
         log_prob = b.log_prob(action)
         # log_prob = b.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
         # regularization = 1e0*torch.sigmoid(dist_params[0])**2
+        # regularization = 1e-2*dist_params[1]**2
         # regularization = 1e-4* ( dist_params[0]**2 + dist_params[1]**2 )
         regularization = torch.tensor(0.0)
-        return torch.sigmoid(action), log_prob, \
-               dist_params[0], dist_params[1], regularization
+        # return torch.sigmoid(action), log_prob, \
+            #    dist_params[0], dist_params[1], regularization
 
-        # return action, log_prob, dist_params[0], dist_params[1], regularization
+        return action, log_prob, dist_params[0], dist_params[1], regularization
 
     def reset(self):
         # self.linear.weight.data.fill_(0.01)

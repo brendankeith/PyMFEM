@@ -7,18 +7,16 @@ from mfem.ser import intArray
 import numpy as np
 import torch
 
+from FEM_env import FEM_env
 from StatisticsAndCost import StatisticsAndCost
 
-class fem_problem:
+class fem_problem(FEM_env):
     one  = mfem.ConstantCoefficient(1.0)
     zero = mfem.ConstantCoefficient(0.0)
     # constructor
-    def __init__(self, mesh_, order_, penalty_=1.0):
-       self.initial_mesh = mesh_
-      #  self.mesh = mesh_
-       self.order = order_
-       self.stats = StatisticsAndCost(penalty_)
-       print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
+    def __init__(self, mesh, order, penalty=1.0):
+       super().__init__(mesh, order)
+       self.stats = StatisticsAndCost(penalty)
 
     def reset(self):
         self.mesh = mfem.Mesh(self.initial_mesh)
@@ -33,7 +31,7 @@ class fem_problem:
         return  torch.tensor(state).float()
 
     def step(self, theta):
-        th_temp = theta.detach().numpy().item()
+        th_temp = theta.item()
         if th_temp < 0. :
           th_temp = 0.
         if th_temp > 1. :
