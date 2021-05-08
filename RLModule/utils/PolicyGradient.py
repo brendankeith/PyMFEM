@@ -33,25 +33,28 @@ from PolicyModels import PolicyNetwork
 GAMMA = 0.9
 ORDER = 1
 
-def update_policy(policy_network, costs, log_probs, regularization=torch.tensor(0.0), update=True):
-    discounted_costs = []
+def update_policy(policy_network, costs, log_probs, regularization=torch.tensor(0.0), update=True, batch_size=1):
+    # discounted_costs = []
 
-    for t in range(len(costs)):
-        Gt = 0 
-        pw = 0
-        for c in costs[t:]:
-            Gt = Gt + GAMMA**pw * c
-            pw = pw + 1
-        discounted_costs.append(Gt)
+    # for t in range(len(costs)):
+    #     Gt = 0 
+    #     pw = 0
+    #     for c in costs[t:]:
+    #         Gt = Gt + GAMMA**pw * c
+    #         pw = pw + 1
         
-    # discounted_costs = torch.tensor(discounted_costs)
-    # discounted_costs = (discounted_costs - discounted_costs.mean()) / (discounted_costs.std() + 1e-9) # normalize discounted rewards
+    #     discounted_costs.append(Gt)
+        
+    # # discounted_costs = torch.tensor(discounted_costs)
+    # # discounted_costs = (discounted_costs - discounted_costs.mean()) / (discounted_costs.std() + 1e-9) # normalize discounted rewards
 
-    policy_gradient = []
-    for log_prob, Gt in zip(log_probs, discounted_costs):
-        policy_gradient.append(log_prob * Gt)
+    # policy_gradient = []
+    # for log_prob, Gt in zip(log_probs, discounted_costs):
+    #     policy_gradient.append(log_prob * Gt)
     
-    policy_gradient = torch.stack(policy_gradient).sum() + regularization
+    # policy_gradient = torch.stack(policy_gradient).sum()/batch_size + regularization
+
+    policy_gradient = costs[0] * log_probs[0] / batch_size
     policy_gradient.backward()
     if update:
         policy_network.optimizer.step()
@@ -63,6 +66,7 @@ if __name__ == "__main__":
     # meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'star.mesh'))
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
+    # mesh.UniformRefinement()
 
     # penalty = 1.0e1
     penalty = 0.0
@@ -70,10 +74,10 @@ if __name__ == "__main__":
     env = toy_problem(mesh,ORDER)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
-    # policy_net.reset()
+    policy_net.reset()
     
-    max_episode_num = 4000
-    batch_size = 5
+    max_episode_num = 1000
+    batch_size = 1
     max_steps = 1
     numsteps = []
     all_costs = []
@@ -114,7 +118,7 @@ if __name__ == "__main__":
 
             if done or steps == max_steps:
                 # update_policy(policy_net, costs, log_probs, update=update)
-                update_policy(policy_net, costs, log_probs, regularization=regularization, update=update)
+                update_policy(policy_net, costs, log_probs, regularization=regularization, update=update, batch_size=batch_size)
                 numsteps.append(steps)
                 all_costs.append(np.sum(costs[0].detach().numpy()))
                 if episode % 1 == 0:
@@ -127,12 +131,12 @@ if __name__ == "__main__":
         
     fig, ax = plt.subplots(4, sharex=True)
     ax[0].plot(actions)
-    ax[0].set_ylabel('Theta')
+    ax[0].set_ylabel('actions')
     ax[1].plot(means)
     ax[1].set_ylabel('means')
     # ax[1].set_ylabel('sigmoid(mu)')
     ax[2].semilogy(sds)
-    ax[2].set_ylabel('sigma')
+    ax[2].set_ylabel('SDs')
     ax[3].plot(all_costs)
     ax[3].set_ylabel('Cost')
     ax[3].set_xlabel('Episode')
