@@ -55,11 +55,15 @@ class PolicyNetwork(nn.Module):
     
     def get_action(self, state):
         dist_params = self.forward(state)
-        # b = tdist.Normal(dist_params[0], dist_params[1])
-        b = TruncatedNormal(dist_params[0], dist_params[1])
-        action = b.sample()
-        log_prob = b.log_prob(action)
-        # log_prob = b.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
+        # ref_dist = tdist.Normal(dist_params[0], dist_params[1])
+        ref_dist = TruncatedNormal(dist_params[0], dist_params[1])
+        # Set de-refinement distribution here:
+        deref_dist = TruncatedNormal(dist_params[0], dist_params[1])
+        ref_axn = ref_dist.sample()
+        deref_axn = deref_dist.sample()
+        action = [ref_axn, deref_axn]
+        log_prob = ref_dist.log_prob(ref_axn)  
+        # log_prob = ref_dist.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
         # regularization = 1e0*torch.sigmoid(dist_params[0])**2
         # regularization = 1e-2*dist_params[1]**2
         # regularization = 1e3 * dist_params[0]**2 + 1e-1 * dist_params[1]**2

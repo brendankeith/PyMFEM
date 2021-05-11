@@ -102,11 +102,11 @@ if __name__ == "__main__":
             # env.render()
             action, log_prob, mean, sd, regularization = policy_net.get_action(state)
             # actions.append(action)
-            actions.append(action)
+            actions.append(action[0])
             means.append(mean.item())
             sds.append(sd.item())
             # new_state, cost, done, _ = env.step(action)
-            new_state, cost, done, _ = env.step(action)
+            new_state, cost, done, _ = env.step(action[0])
             # if episode % 500 == 0 and episode < 5001:
             #     env.PlotSolution()
 
