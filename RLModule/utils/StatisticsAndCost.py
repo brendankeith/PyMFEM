@@ -5,7 +5,6 @@
 from collections import namedtuple
 import numpy as np
 from math import *
-import scipy
 from scipy.stats import describe
 
 class StatisticsAndCost:

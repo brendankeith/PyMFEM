@@ -4,7 +4,7 @@
 import numpy as np
 import torch
 import torch.distributions as tdist
-from utils.FEM_env import FEM_env
+from prob_envs.FEM_env import FEM_env
 
 class toy_problem(FEM_env):
 
