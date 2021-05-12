@@ -32,6 +32,7 @@ from PolicyModels import PolicyNetwork
 # Constants
 GAMMA = 0.9
 ORDER = 1
+baseline = 1e4
 
 def update_policy(policy_network, costs, log_probs, regularization=torch.tensor(0.0), update=True, batch_size=1):
     # discounted_costs = []
@@ -54,7 +55,9 @@ def update_policy(policy_network, costs, log_probs, regularization=torch.tensor(
     
     # policy_gradient = torch.stack(policy_gradient).sum()/batch_size + regularization
 
-    policy_gradient = costs[0] * log_probs[0] / batch_size
+    baseline = policy_network.update_baseline(costs)
+    print('baseline = ', baseline)
+    policy_gradient = (costs[0] - baseline) * log_probs[0] / batch_size
     policy_gradient.backward()
     if update:
         policy_network.optimizer.step()
@@ -66,17 +69,18 @@ if __name__ == "__main__":
     # meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'star.mesh'))
     mesh = mfem.Mesh(meshfile, 1,1)
     mesh.UniformRefinement()
-    # mesh.UniformRefinement()
+    mesh.UniformRefinement()
+    mesh.UniformRefinement()
 
     # penalty = 1.0e1
     penalty = 0.0
-    # env = fem_problem(mesh,ORDER,penalty)
-    env = toy_problem(mesh,ORDER)
+    env = fem_problem(mesh,ORDER,penalty)
+    # env = toy_problem(mesh,ORDER)
     # env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(4)
     policy_net.reset()
     
-    max_episode_num = 1000
+    max_episode_num = 500
     batch_size = 1
     max_steps = 1
     numsteps = []

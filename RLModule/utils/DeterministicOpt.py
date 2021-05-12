@@ -20,8 +20,8 @@ GAMMA = 0.9
 meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'l-shape.mesh'))
 mesh = mfem.Mesh(meshfile, 1,1)
 mesh.UniformRefinement()
-# mesh.UniformRefinement()
-# mesh.UniformRefinement()
+mesh.UniformRefinement()
+mesh.UniformRefinement()
 # mesh.UniformRefinement()
 
 # penalty = 1e1
@@ -40,7 +40,7 @@ def f(action):
     # nel = poisson.mesh.GetNE()
     return cost
 
-res = minimize_scalar(f, bounds=(0, 1), method='bounded')
+res = minimize_scalar(f, bounds=(0, 0.8), method='bounded')
 
 print("Optimal theta = ", res.x)
 print("Optimal cost  = ", f(res.x))

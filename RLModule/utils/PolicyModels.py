@@ -30,10 +30,12 @@ class PolicyNetwork(nn.Module):
         self.log_sigma = nn.Parameter(torch.randn(()))
         self.softplus = nn.Softplus(beta=4.0)
 
-        self.optimizer = PSGD(self.parameters(), lr=learning_rate)
+        # self.optimizer = PSGD(self.parameters(), lr=learning_rate)
         # self.optimizer = optim.SGD(self.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
         # self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        # self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+        self.baseline = 0.0
 
 
     def forward(self, state):
@@ -47,32 +49,32 @@ class PolicyNetwork(nn.Module):
         # return mu, 0.1*torch.sigmoid(self.log_sigma)
         # return mu, torch.exp(self.log_sigma)
         # return torch.relu(self.mu), torch.exp(self.log_sigma)
-        print('mu = ', self.mu.data)
-        print('sigma = ', self.softplus(self.log_sigma.data))
+        # print('mu = ', self.mu.data)
+        # print('sigma = ', self.softplus(self.log_sigma.data))
         return self.mu, self.softplus(self.log_sigma)
         # return self.mu, torch.exp(self.log_sigma)
         # return self.mu, torch.tensor(0.01)
     
     def get_action(self, state):
         dist_params = self.forward(state)
-        # ref_dist = tdist.Normal(dist_params[0], dist_params[1])
-        ref_dist = TruncatedNormal(dist_params[0], dist_params[1])
+        ref_dist = tdist.Normal(dist_params[0], dist_params[1])
+        # ref_dist = TruncatedNormal(dist_params[0], dist_params[1])
         # Set de-refinement distribution here:
-        deref_dist = TruncatedNormal(dist_params[0], dist_params[1])
+        deref_dist = tdist.Normal(dist_params[0], dist_params[1])
         ref_axn = ref_dist.sample()
         deref_axn = deref_dist.sample()
-        action = [ref_axn, deref_axn]
+        action = torch.tensor((ref_axn, deref_axn))
         log_prob = ref_dist.log_prob(ref_axn)  
-        # log_prob = ref_dist.log_prob(action) - torch.log(torch.sigmoid(action)*(1.0 - torch.sigmoid(action)))
+        # log_prob = ref_dist.log_prob(ref_axn) - torch.log(torch.sigmoid(ref_axn)*(1.0 - torch.sigmoid(ref_axn)))
         # regularization = 1e0*torch.sigmoid(dist_params[0])**2
         # regularization = 1e-2*dist_params[1]**2
         # regularization = 1e3 * dist_params[0]**2 + 1e-1 * dist_params[1]**2
         # regularization = 1e-2 * ( dist_params[0]**2 + dist_params[1]**2 )
         regularization = torch.tensor(0.0)
-        # return torch.sigmoid(action), log_prob, \
-            #    dist_params[0], dist_params[1], regularization
+        return torch.sigmoid(action), log_prob, \
+               dist_params[0], dist_params[1], regularization
 
-        return action, log_prob, dist_params[0], dist_params[1], regularization
+        # return action, log_prob, dist_params[0], dist_params[1], regularization
 
     def reset(self):
         # self.linear.weight.data.fill_(0.01)
@@ -82,6 +84,10 @@ class PolicyNetwork(nn.Module):
         # self.log_sigma.data = torch.log(torch.tensor(0.01))
         # self.mu.data = torch.tensor(-1.4675)
         # self.log_sigma.data = torch.tensor(-1.4409)
+    
+    def update_baseline(self, costs):
+        self.baseline = np.minimum(self.baseline,costs[0].item()) + 0.01
+        return self.baseline
 
 
 class PSGD:
@@ -103,8 +109,6 @@ class PSGD:
             for p in self.params:
                 p.data -= self.lr * p.grad
                 if cnt == 0:
-                    # p = torch.max(torch.tensor(0.001, requires_grad=True),p)
-                    # p = torch.min(torch.tensor(0.999, requires_grad=True),p)
                     p.data = torch.relu(1.0 - torch.relu(1.0-p.data))
                     cnt+=1
         

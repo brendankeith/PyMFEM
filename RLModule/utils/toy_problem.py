@@ -35,7 +35,7 @@ class toy_problem(FEM_env):
         dist = tdist.Normal(theta,0.01)
         state = dist.sample()
         cts_cost = (state - cost_min)**2
-        cost = torch.floor(steps * cts_cost)/steps# + 0.01
+        cost = torch.floor(steps * cts_cost)/steps + 0.01
 
         # if theta < 0.3:
         #     cost = torch.tensor(-7.255)
