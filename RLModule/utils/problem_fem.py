@@ -7,8 +7,8 @@ from mfem.ser import intArray
 import numpy as np
 import torch
 
-from FEM_env import FEM_env
-from StatisticsAndCost import StatisticsAndCost
+from utils.FEM_env import FEM_env
+from utils.StatisticsAndCost import StatisticsAndCost
 
 class fem_problem(FEM_env):
     one  = mfem.ConstantCoefficient(1.0)
