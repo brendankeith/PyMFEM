@@ -14,8 +14,9 @@ class fem_problem(FEM_env):
     one  = mfem.ConstantCoefficient(1.0)
     zero = mfem.ConstantCoefficient(0.0)
     # constructor
-    def __init__(self, mesh, order, penalty=1.0):
-       super().__init__(mesh, order)
+    def __init__(self, **kwargs):
+       super().__init__(**kwargs)
+       penalty = kwargs.get('max_steps',0.0)
        self.stats = StatisticsAndCost(penalty)
 
     def reset(self):

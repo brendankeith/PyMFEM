@@ -1,19 +1,18 @@
 ### Configuration
 import sys
 sys.path.append("/Users/keith10/Work/PyMFEM/RLModule")
-import os
-from os.path import expanduser, join
-import mfem.ser as mfem
 from utils.PolicyNetworks import TwoParamNormal, TwoParamTruncatedNormal
 from utils.PolicyGradientMethods import REINFORCE
 from prob_envs.problem_fem import fem_problem
 from prob_envs.toy_problem import toy_problem
 import matplotlib.pyplot as plt
 
-
-
-ORDER = 1
-config = {
+prob_config = {
+    'mesh_name'         : 'l-shape.mesh',
+    'num_unif_ref'      : 1,
+    'order'             : 1,
+}
+DRL_config = {
     'batch_size'        : 1,
     'max_steps'         : 1,
     'max_episode_num'   : 1000,
@@ -23,19 +22,13 @@ config = {
 
 if __name__ == "__main__":
 
-    meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'l-shape.mesh'))
-    # meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', 'star.mesh'))
-    mesh = mfem.Mesh(meshfile, 1,1)
-    mesh.UniformRefinement()
-
-    penalty = 0.0
-    env = fem_problem(mesh,ORDER,penalty)
-    policy_net = TwoParamNormal(**config)
+    env = fem_problem(**prob_config)
+    policy_net = TwoParamNormal(**DRL_config)
     # policy_net = TwoParamTruncatedNormal(**config)
     policy_net.reset()
 
     REINFORCE = REINFORCE(env, policy_net)
-    REINFORCE(**config)
+    REINFORCE(**DRL_config)
 
     means = REINFORCE.dist_params[0]
     sds = REINFORCE.dist_params[1]

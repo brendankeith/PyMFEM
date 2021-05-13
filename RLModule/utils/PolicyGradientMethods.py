@@ -1,0 +1,126 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+import torch
+
+'''
+    BASE CLASS for policy gradient algorithms
+'''
+class PolicyGradientMethod:
+
+    def __init__(self, env, policy_net):
+        self.env = env
+        self.policy_net = policy_net
+
+    def __call__(self, **kwargs):
+        self.process_kwargs(**kwargs)
+        self.optimize()
+        self.plot_results()
+
+    def process_kwargs(self, **kwargs):
+        self.batch_size = kwargs.get('batch_size',1)
+        self.max_steps = kwargs.get('max_steps',1)
+        self.max_episode_num = kwargs.get('max_episode_num',100)
+        self.GAMMA = kwargs.get('GAMMA',1.0)
+
+    def optimize(self):
+        self.numsteps = [1]
+        self.actions = [0.0]
+        self.all_costs = [0.0]
+
+    def plot_results(self):
+
+        if not self.all_costs:
+            raise ValueError("Cannot plot empty results")
+
+        fig, ax = plt.subplots(2, sharex=True)
+        ax[0].plot(self.actions)
+        ax[0].set_ylabel('actions')
+        ax[1].plot(self.all_costs)
+        ax[1].set_ylabel('Cost')
+        ax[1].set_xlabel('Episode')
+
+'''
+    REINFORCE (with constant baseline)
+'''
+class REINFORCE(PolicyGradientMethod):
+
+    def optimize(self):
+        
+        env = self.env
+        policy_net = self.policy_net
+        max_episode_num = self.max_episode_num
+        batch_size = self.batch_size
+        max_steps = self.max_steps
+        numsteps = []
+        all_costs = []
+        actions = []
+        dist_params = [[] for _ in range(2)]
+        for episode in range(1,max_episode_num):
+            state = env.reset()
+            log_probs = []
+            costs = []
+            update=False
+    
+            if episode % batch_size == 0:
+                update=True
+
+            if batch_size == 1 or episode % batch_size == 1:
+                policy_net.optimizer.zero_grad()
+            
+            for steps in range(1,max_steps+1):
+                action, log_prob, dist_param = policy_net.get_action(state)
+                actions.append(action)
+                new_state, cost, done, _ = env.step(action)
+
+                log_probs.append(log_prob)
+                costs.append(torch.tensor([cost]))
+                for i, param in enumerate(dist_param):
+                    dist_params[i].append(param.item())
+
+                if done or steps == max_steps:
+                    self.update_policy(costs, log_probs, update=update)
+                    numsteps.append(steps)
+                    all_costs.append(np.sum(costs[0].detach().numpy()))
+                    if episode % 1 == 0:
+                        sys.stdout.write("episode: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
+                    break
+                
+                state = new_state
+        
+        self.numsteps = numsteps
+        self.actions = actions
+        self.all_costs = all_costs
+        self.dist_params = dist_params
+    
+    def update_policy(self, costs, log_probs, update=True):
+
+        GAMMA = self.GAMMA
+        policy_net = self.policy_net
+        batch_size = self.batch_size
+        baseline = policy_net.update_baseline(costs)
+
+        discounted_costs = []
+        for t in range(len(costs)):
+            Gt = 0 
+            pw = 0
+            for c in costs[t:]:
+                Gt = Gt + GAMMA**pw * c
+                pw = pw + 1
+            
+            discounted_costs.append(Gt)
+            
+        # discounted_costs = torch.tensor(discounted_costs)
+        # discounted_costs = (discounted_costs - discounted_costs.mean()) / (discounted_costs.std() + 1e-9) # normalize discounted rewards
+
+        policy_gradient = []
+        for log_prob, Gt in zip(log_probs, discounted_costs):
+            policy_gradient.append(log_prob * (Gt - baseline))
+        
+        policy_gradient = torch.stack(policy_gradient).sum()/batch_size
+
+        # print('baseline = ', baseline)
+        # policy_gradient = (costs[0] - baseline) * log_probs[0] / batch_size
+        policy_gradient.backward()
+        if update:
+            policy_net.optimizer.step()
