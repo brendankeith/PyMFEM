@@ -16,7 +16,7 @@ class fem_problem(FEM_env):
     # constructor
     def __init__(self, **kwargs):
        super().__init__(**kwargs)
-       penalty = kwargs.get('max_steps',0.0)
+       penalty = kwargs.get('penalty',0.0)
        self.stats = StatisticsAndCost(penalty)
 
     def reset(self):
