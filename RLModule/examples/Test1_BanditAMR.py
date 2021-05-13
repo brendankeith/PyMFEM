@@ -35,7 +35,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(2, sharex=True)
     ax[0].plot(means)
     # ax[0].set_ylabel('means')
-    ax[1].set_ylabel('sigmoid(mean)')
+    ax[0].set_ylabel('sigmoid(mean)')
     ax[1].semilogy(sds)
     ax[1].set_ylabel('std. dev.')
 
