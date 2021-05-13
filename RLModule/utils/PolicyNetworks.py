@@ -79,7 +79,43 @@ class TwoParamTruncatedNormal(nn.Module):
         self.baseline = np.minimum(self.baseline,costs[0].item()) + 0.01
         return self.baseline
 
+class MultParamNormal(nn.Module):
+    def __init__(self, **kwargs):
+        super(MultParamNormal, self).__init__()
 
+        self.linear = nn.Linear(4, 2) # state parameters // for now only 4
+        
+        learning_rate = kwargs.get('learning_rate',1e-2)
+        weight_decay = kwargs.get('weight_decay',0.)
+        momentum = kwargs.get('momentum',0.)
+        update_rule = kwargs.get('update_rule','SGD')
+        # in python 3.10 we will be able to use a "switch" (https://stackoverflow.com/questions/60208/replacements-for-switch-statement-in-python)
+        if update_rule == 'Adam':
+            self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif update_rule == 'RMSprop':
+            self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+        else:
+            self.optimizer = optim.SGD(self.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+        self.baseline = 0.0
+
+    def forward(self, state):
+        x = self.linear(state)
+        return x[0], torch.exp(x[1])
+    
+    def get_action(self, state):
+        params = self.forward(state)
+        # print("params = ", params[0].item(), ", ", params[1].item())
+        b = tdist.Normal(params[0],params[1])
+        action = b.sample()
+        log_prob = b.log_prob(action)
+        return torch.sigmoid(action), log_prob, params
+
+    def reset(self):
+        return None
+    
+    def update_baseline(self, costs):
+        self.baseline = np.minimum(self.baseline,costs[0].item()) + 0.01
+        return self.baseline
 
 
 

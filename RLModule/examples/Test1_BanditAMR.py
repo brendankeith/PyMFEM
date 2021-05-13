@@ -1,7 +1,7 @@
 ### Configuration
 import sys
-sys.path.append("/Users/keith10/Work/PyMFEM/RLModule")
-from utils.PolicyNetworks import TwoParamNormal, TwoParamTruncatedNormal
+sys.path.append("..")
+from utils.PolicyNetworks import TwoParamNormal, TwoParamTruncatedNormal, MultParamNormal
 from utils.PolicyGradientMethods import REINFORCE
 from prob_envs.problem_fem import fem_problem
 from prob_envs.toy_problem import toy_problem
@@ -17,6 +17,7 @@ DRL_config = {
     'max_steps'         : 1,
     'max_episode_num'   : 1000,
     'learning_rate'     : 1e-1,
+    'update_rule'       :'Adam'
     # 'learning_rate'     : 1e-2,
 }
 
@@ -24,6 +25,7 @@ if __name__ == "__main__":
 
     env = fem_problem(**prob_config)
     policy_net = TwoParamNormal(**DRL_config)
+    # policy_net = MultParamNormal(**DRL_config)
     # policy_net = TwoParamTruncatedNormal(**config)
     policy_net.reset()
 
