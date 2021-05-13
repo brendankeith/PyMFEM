@@ -34,11 +34,18 @@ class PolicyGradientMethod:
             raise ValueError("Cannot plot empty results")
 
         fig, ax = plt.subplots(2, sharex=True)
-        ax[0].plot(self.actions)
+        ax[0].plot(self.actions,'-o', linewidth=0.2, markersize=0.2)
         ax[0].set_ylabel('actions')
-        ax[1].plot(self.all_costs)
+        ymin = np.min(self.actions)
+        ymin = np.minimum(ymin,-0.1)
+        ymax = np.max(self.actions)
+        ymax = np.maximum(ymax,1.1)
+        ax[0].set_ylim(ymin, ymax)
+        ax[0].set_xlabel('Episodes')
+
+        ax[1].plot(self.all_costs,'-o',linewidth=0.2, markersize=0.2)
         ax[1].set_ylabel('Cost')
-        ax[1].set_xlabel('Episode')
+        ax[1].set_xlabel('Episodes')
 
 '''
     REINFORCE (with constant baseline)
@@ -55,7 +62,7 @@ class REINFORCE(PolicyGradientMethod):
         numsteps = []
         all_costs = []
         actions = []
-        dist_params = [[] for _ in range(2)]
+        dist_params = []
         for episode in range(1,max_episode_num):
             state = env.reset()
             log_probs = []
@@ -75,8 +82,14 @@ class REINFORCE(PolicyGradientMethod):
 
                 log_probs.append(log_prob)
                 costs.append(torch.tensor([cost]))
-                for i, param in enumerate(dist_param):
-                    dist_params[i].append(param.item())
+                # params = dist_param.detach().numpy()
+                if episode == 1:
+                    dist_params = dist_param
+                else:
+                    dist_params = np.vstack([dist_params,dist_param])
+                # for i, param in enumerate(dist_param):
+                    # params = 
+                    # dist_params[i].append(param.item())
 
                 if done or steps == max_steps:
                     self.update_policy(costs, log_probs, update=update)

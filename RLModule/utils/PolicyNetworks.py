@@ -69,7 +69,7 @@ class TwoParamTruncatedNormal(nn.Module):
         dist = TruncatedNormal(dist_params[0], dist_params[1])
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        return action, log_prob, [dist_params[0], dist_params[1]]
+        return action, log_prob, dist_params
 
     def reset(self):
         self.mu.data = torch.tensor(0.5)
@@ -79,9 +79,9 @@ class TwoParamTruncatedNormal(nn.Module):
         self.baseline = np.minimum(self.baseline,costs[0].item()) + 0.01
         return self.baseline
 
-class MultParamNormal(nn.Module):
+class LinearNormal(nn.Module):
     def __init__(self, **kwargs):
-        super(MultParamNormal, self).__init__()
+        super(LinearNormal, self).__init__()
 
         self.linear = nn.Linear(4, 2) # state parameters // for now only 4
         
@@ -91,11 +91,14 @@ class MultParamNormal(nn.Module):
         update_rule = kwargs.get('update_rule','SGD')
         # in python 3.10 we will be able to use a "switch" (https://stackoverflow.com/questions/60208/replacements-for-switch-statement-in-python)
         if update_rule == 'Adam':
-            self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            self.optimizer = optim.Adam(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay)
         elif update_rule == 'RMSprop':
-            self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+            self.optimizer = optim.RMSprop(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
         else:
-            self.optimizer = optim.SGD(self.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+            self.optimizer = optim.SGD(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
         self.baseline = 0.0
 
     def forward(self, state):
@@ -104,7 +107,6 @@ class MultParamNormal(nn.Module):
     
     def get_action(self, state):
         params = self.forward(state)
-        # print("params = ", params[0].item(), ", ", params[1].item())
         b = tdist.Normal(params[0],params[1])
         action = b.sample()
         log_prob = b.log_prob(action)
@@ -118,6 +120,46 @@ class MultParamNormal(nn.Module):
         return self.baseline
 
 
+class Categorical(nn.Module):
+    def __init__(self, **kwargs):
+        super(Categorical, self).__init__()
+
+        self.linear = nn.Linear(4, 2) # state parameters // for now only 4
+        
+        self.num_actions = kwargs.get('num_actions',5)
+        learning_rate = kwargs.get('learning_rate',1e-2)
+        weight_decay = kwargs.get('weight_decay',0.)
+        momentum = kwargs.get('momentum',0.)
+        update_rule = kwargs.get('update_rule','SGD')
+        self.logits = nn.Parameter(torch.randn((self.num_actions)))
+
+        if update_rule == 'Adam':
+            self.optimizer = optim.Adam(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay)
+        elif update_rule == 'RMSprop':
+            self.optimizer = optim.RMSprop(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+        else:
+            self.optimizer = optim.SGD(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+        self.baseline = 0.0
+
+    def forward(self, state):
+        return torch.softmax(self.logits,dim=0)
+
+    
+    def get_action(self, state):
+        probs = self.forward(state)
+        b = tdist.Categorical(probs=probs)
+        action = b.sample()
+        log_prob = b.log_prob(action)
+        return action/(self.num_actions-1), log_prob, probs.detach().numpy()
+
+    def reset(self):
+        self.logits.data.fill_(1/self.num_actions) 
+    
+    def update_baseline(self, costs):
+        return self.baseline
 
 
 ###########################
