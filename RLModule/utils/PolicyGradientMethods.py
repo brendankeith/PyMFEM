@@ -137,3 +137,92 @@ class REINFORCE(PolicyGradientMethod):
         policy_gradient.backward()
         if update:
             policy_net.optimizer.step()
+
+
+'''
+    Actor-Critic (without eligibility traces)
+'''
+class ActorCritic(PolicyGradientMethod):
+
+    def __init__(self, env, policy_net, value_net):
+        super(ActorCritic, self).__init__(env, policy_net)
+        self.value_net = value_net
+
+    def optimize(self):
+        env = self.env
+        policy_net = self.policy_net
+        value_net = self.value_net
+        max_episode_num = self.max_episode_num
+        batch_size = self.batch_size
+        max_steps = self.max_steps
+        GAMMA = self.GAMMA
+        numsteps = []
+        all_costs = []
+        actions = []
+        dist_params = []
+        for episode in range(1,max_episode_num):
+            state = env.reset()
+            log_probs = []
+            costs = []
+            update=False
+    
+            if episode % batch_size == 0:
+                update=True
+
+            if batch_size == 1 or episode % batch_size == 1:
+                policy_net.optimizer.zero_grad()
+                value_net.optimizer.zero_grad()
+            
+            for steps in range(1,max_steps+1):
+                action, log_prob, dist_param = policy_net.get_action(state)
+                actions.append(action)
+                new_state, cost, done, _ = env.step(action)
+
+                if steps == max_steps:
+                    # delta = cost + 7.255
+                    delta = cost - value_net(state)
+                else:
+                    delta = cost + GAMMA*value_net(new_state) - value_net(state)
+
+                v = value_net(state)
+                v.backward()
+                with torch.no_grad():
+                    for p in value_net.parameters():
+                        p.data += value_net.learning_rate * delta * p.grad
+
+                log_prob.backward()
+                with torch.no_grad():
+                    for p in policy_net.parameters():
+                        p.data -= policy_net.learning_rate * GAMMA**(steps-1) * delta * p.grad
+
+                # log_probs.append(log_prob)
+                print('\n')
+                print('cost = ',cost)
+                print('action = ',action)
+                print('delta = ',delta)
+                print('value function estimat = ',value_net(state).item())
+                # print('value_net params')
+                # for p in value_net.parameters():
+                #     print(p)
+                # print('policy_net params')
+                # for p in policy_net.parameters():
+                #     print(p)
+                costs.append(torch.tensor([cost]))
+                # if episode == 1:
+                #     dist_params = dist_param
+                # else:
+                #     dist_params = np.vstack([dist_params,dist_param])
+
+                # if done or steps == max_steps:
+                #     self.update_policy(costs, log_probs, update=update)
+                #     numsteps.append(steps)
+                all_costs.append(np.sum(costs[0].detach().numpy()))
+                #     if episode % 1 == 0:
+                #         sys.stdout.write("episode: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
+                #     break
+                
+                state = new_state
+        
+        # self.numsteps = numsteps
+        self.actions = actions
+        self.all_costs = all_costs

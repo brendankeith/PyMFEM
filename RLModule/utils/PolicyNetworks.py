@@ -85,6 +85,7 @@ class LinearNormal(nn.Module):
 
         self.linear = nn.Linear(4, 2) # state parameters // for now only 4
         
+        self.learning_rate = kwargs.get('learning_rate',1e-2)
         learning_rate = kwargs.get('learning_rate',1e-2)
         weight_decay = kwargs.get('weight_decay',0.)
         momentum = kwargs.get('momentum',0.)
@@ -160,6 +161,32 @@ class Categorical(nn.Module):
     
     def update_baseline(self, costs):
         return self.baseline
+
+
+
+###########################
+##### CRITICS
+###########################
+
+class LinearCritic(nn.Module):
+    def __init__(self, **kwargs):
+        super(LinearCritic, self).__init__()
+        self.learning_rate = kwargs.get('learning_rate_critic',1e-2)
+        weight_decay = kwargs.get('weight_decay',0.)
+        momentum = kwargs.get('momentum',0.)
+        self.linear = nn.Linear(4, 1) # state parameters // for now only 4
+        self.optimizer = optim.SGD(self.parameters(), lr=self.learning_rate, weight_decay=weight_decay, momentum=momentum)
+
+    def forward(self, state):
+        x = self.linear(state)
+        return x
+
+    def reset(self):
+        self.linear.weight.data.fill_(0.0)
+        # self.linear.bias.data.fill_(0.0)
+        self.linear.bias.data.fill_(-8.0)
+
+
 
 
 ###########################

@@ -2,6 +2,7 @@
 import sys
 
 from torch.distributions import distribution
+sys.path.append("/Users/keith10/Work/PyMFEM/RLModule")
 sys.path.append("..")
 from utils.PolicyNetworks import Categorical, TwoParamNormal, TwoParamTruncatedNormal, LinearNormal
 from utils.PolicyGradientMethods import REINFORCE
