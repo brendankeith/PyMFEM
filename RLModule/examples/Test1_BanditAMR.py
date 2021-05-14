@@ -2,8 +2,8 @@
 import sys
 
 from torch.distributions import distribution
-sys.path.append("/Users/keith10/Work/PyMFEM/RLModule")
 sys.path.append("..")
+sys.path.append("./RLModule")
 from utils.PolicyNetworks import Categorical, TwoParamNormal, TwoParamTruncatedNormal, LinearNormal
 from utils.PolicyGradientMethods import REINFORCE
 from prob_envs.problem_fem import fem_problem
@@ -24,7 +24,7 @@ dist_choice = 'TwoParamNormal'
 DRL_config = {
     'batch_size'        : 1,
     'max_steps'         : 1,
-    'max_episode_num'   : 1000,
+    'max_episodes'   : 1000,
     'learning_rate'     : 5e-2,
     'update_rule'       :'SGD',
     'num_actions'       : 5

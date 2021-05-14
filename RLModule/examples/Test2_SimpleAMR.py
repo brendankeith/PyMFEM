@@ -2,7 +2,7 @@
 import sys
 
 from torch.distributions import distribution
-sys.path.append("/Users/keith10/Work/PyMFEM/RLModule")
+sys.path.append("./RLModule")
 sys.path.append("..")
 from utils.PolicyNetworks import LinearNormal, LinearCritic
 from utils.PolicyGradientMethods import ActorCritic, REINFORCE
@@ -18,9 +18,9 @@ prob_config = {
 DRL_config = {
     'batch_size'        : 1,
     'max_steps'         : 3,
-    'max_episode_num'   : 2000,
-    'learning_rate'     : 1e-4,
-    'learning_rate_critic'     : 1e-4,
+    'max_episodes'   : 1000,
+    'learning_rate'     : 1e-3,
+    'learning_rate_critic'     : 1e-3,
 }
 
 if __name__ == "__main__":

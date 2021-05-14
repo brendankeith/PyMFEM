@@ -20,7 +20,7 @@ class PolicyGradientMethod:
     def process_kwargs(self, **kwargs):
         self.batch_size = kwargs.get('batch_size',1)
         self.max_steps = kwargs.get('max_steps',1)
-        self.max_episode_num = kwargs.get('max_episode_num',100)
+        self.max_episodes = kwargs.get('max_episodes',100)
         self.GAMMA = kwargs.get('GAMMA',1.0)
 
     def optimize(self):
@@ -33,19 +33,32 @@ class PolicyGradientMethod:
         if not self.all_costs:
             raise ValueError("Cannot plot empty results")
 
-        fig, ax = plt.subplots(2, sharex=True)
-        ax[0].plot(self.actions,'-o', linewidth=0.2, markersize=0.2)
-        ax[0].set_ylabel('actions')
-        ymin = np.min(self.actions)
-        ymin = np.minimum(ymin,-0.1)
-        ymax = np.max(self.actions)
-        ymax = np.maximum(ymax,1.1)
-        ax[0].set_ylim(ymin, ymax)
-        ax[0].set_xlabel('Episodes')
+        step_actions = np.resize(self.actions,(self.max_episodes,self.max_steps))
+        step_costs = np.resize(self.all_costs,(self.max_episodes,self.max_steps))
 
-        ax[1].plot(self.all_costs,'-o',linewidth=0.2, markersize=0.2)
-        ax[1].set_ylabel('Cost')
+        fig, ax = plt.subplots(2, sharex=True)
+        ax[0].set_ylim(0, 1)
+        ax[0].set_ylabel("Actions")
+        ax[1].set_ylabel("Costs")
+        for i in range(0,self.max_steps):
+            ax[0].plot(step_actions[:,i],label="Step: {:.2f}".format(i+1),linewidth=0.5)
+            ax[1].plot(step_costs[:,i],label="Step: {:.2f}".format(i+1),linewidth=0.5)
+
+        ax[0].legend()
+        ax[1].legend()
+
         ax[1].set_xlabel('Episodes')
+
+        # ymin = np.min(self.actions)
+        # ymin = np.minimum(ymin,-0.1)
+        # ymax = np.max(self.actions)
+        # ymax = np.maximum(ymax,1.1)
+        # ax[0].set_ylim(ymin, ymax)
+        # ax[0].set_xlabel('Episodes')
+
+        # ax[1].plot(self.all_costs,'-o',linewidth=0.2, markersize=0.2)
+        # ax[1].set_ylabel('Cost')
+        # ax[1].set_xlabel('Episodes')
 
 '''
     REINFORCE (with constant baseline)
@@ -56,14 +69,14 @@ class REINFORCE(PolicyGradientMethod):
         
         env = self.env
         policy_net = self.policy_net
-        max_episode_num = self.max_episode_num
+        max_episodes = self.max_episodes
         batch_size = self.batch_size
         max_steps = self.max_steps
         numsteps = []
         all_costs = []
         actions = []
         dist_params = []
-        for episode in range(1,max_episode_num):
+        for episode in range(1,max_episodes):
             state = env.reset()
             log_probs = []
             costs = []
@@ -152,22 +165,14 @@ class ActorCritic(PolicyGradientMethod):
         env = self.env
         policy_net = self.policy_net
         value_net = self.value_net
-        max_episode_num = self.max_episode_num
+        max_episodes = self.max_episodes
         batch_size = self.batch_size
         max_steps = self.max_steps
         GAMMA = self.GAMMA
-        numsteps = []
         all_costs = []
         actions = []
-        dist_params = []
-        for episode in range(1,max_episode_num):
+        for episode in range(1,max_episodes):
             state = env.reset()
-            log_probs = []
-            costs = []
-            update=False
-    
-            if episode % batch_size == 0:
-                update=True
 
             if batch_size == 1 or episode % batch_size == 1:
                 policy_net.optimizer.zero_grad()
@@ -196,18 +201,17 @@ class ActorCritic(PolicyGradientMethod):
                         p.data -= policy_net.learning_rate * GAMMA**(steps-1) * delta * p.grad
 
                 # log_probs.append(log_prob)
-                print('\n')
-                print('cost = ',cost)
-                print('action = ',action)
-                print('delta = ',delta)
-                print('value function estimat = ',value_net(state).item())
+                # print('\n')
+                # print('cost = ',cost)
+                # print('action = ',action)
+                # print('delta = ',delta)
+                # print('value function estimat = ',value_net(state).item())
                 # print('value_net params')
                 # for p in value_net.parameters():
                 #     print(p)
                 # print('policy_net params')
                 # for p in policy_net.parameters():
                 #     print(p)
-                costs.append(torch.tensor([cost]))
                 # if episode == 1:
                 #     dist_params = dist_param
                 # else:
@@ -216,7 +220,7 @@ class ActorCritic(PolicyGradientMethod):
                 # if done or steps == max_steps:
                 #     self.update_policy(costs, log_probs, update=update)
                 #     numsteps.append(steps)
-                all_costs.append(np.sum(costs[0].detach().numpy()))
+                all_costs.append(cost)
                 #     if episode % 1 == 0:
                 #         sys.stdout.write("episode: {}, average_cost: {}, length: {}\n".format(episode, np.round(np.mean(all_costs[-10:]), decimals = 10), steps))
                 #     break
