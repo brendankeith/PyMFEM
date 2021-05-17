@@ -102,9 +102,9 @@ class LinearNormal(nn.Module):
                  lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
         self.baseline = 0.0
 
-    def forward(self, state):
+    def forward(self, state, sd_tol=1e0):
         x = self.linear(state)
-        return x[0], torch.exp(x[1])
+        return x[0], torch.exp(x[1]) + sd_tol
     
     def get_action(self, state):
         params = self.forward(state)

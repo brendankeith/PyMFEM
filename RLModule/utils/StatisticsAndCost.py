@@ -28,7 +28,7 @@ class StatisticsAndCost:
         self.skewness = description.skewness
         self.kurtosis = description.kurtosis
         self.cost = self.mean
-        # if self.nobs > 100: 
+        # if self.nobs > 500: 
             # self.cost = 0.
         # self.cost = self.mean + self.penalty * self.variance
         # self.cost = self.mean + self.penalty * np.sqrt(self.variance) / self.mean

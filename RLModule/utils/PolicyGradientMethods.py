@@ -76,7 +76,7 @@ class REINFORCE(PolicyGradientMethod):
         all_costs = []
         actions = []
         dist_params = []
-        for episode in range(1,max_episodes):
+        for episode in range(1,max_episodes+1):
             state = env.reset()
             log_probs = []
             costs = []
@@ -171,7 +171,7 @@ class ActorCritic(PolicyGradientMethod):
         GAMMA = self.GAMMA
         all_costs = []
         actions = []
-        for episode in range(1,max_episodes):
+        for episode in range(1,max_episodes+1):
             state = env.reset()
 
             if batch_size == 1 or episode % batch_size == 1:
