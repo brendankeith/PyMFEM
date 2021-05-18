@@ -201,11 +201,11 @@ class ActorCritic(PolicyGradientMethod):
                         p.data -= policy_net.learning_rate * GAMMA**(steps-1) * delta * p.grad
 
                 # log_probs.append(log_prob)
-                # print('\n')
+                print('\n')
                 # print('cost = ',cost)
                 # print('action = ',action)
-                # print('delta = ',delta)
-                # print('value function estimat = ',value_net(state).item())
+                print('delta = ',delta.item())
+                print('value function estimate = ',value_net(state).item())
                 # print('value_net params')
                 # for p in value_net.parameters():
                 #     print(p)

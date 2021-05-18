@@ -4,7 +4,7 @@ import sys
 from torch.distributions import distribution
 sys.path.append("./RLModule")
 sys.path.append("..")
-from utils.PolicyNetworks import LinearNormal, LinearCritic
+from utils.PolicyNetworks import LinearNormal, LinearCritic, LinearTruncatedNormal
 from utils.PolicyGradientMethods import ActorCritic, REINFORCE
 from prob_envs.problem_fem import fem_problem
 import matplotlib.pyplot as plt
@@ -13,20 +13,22 @@ prob_config = {
     'mesh_name'         : 'l-shape.mesh',
     'num_unif_ref'      : 1,
     'order'             : 1,
+    'penalty'           : 1.0,
 }
 
 DRL_config = {
     'batch_size'            : 1,
-    'max_steps'             : 3,
+    'max_steps'             : 4,
     'max_episodes'          : 1000,
-    'learning_rate'         : 1e-3,
-    'learning_rate_critic'  : 1e-3,
+    'learning_rate'         : 1e-4,
+    'learning_rate_critic'  : 1e-4,
 }
 
 if __name__ == "__main__":
 
     env = fem_problem(**prob_config)
-    policy_net = LinearNormal(**DRL_config)
+    policy_net = LinearTruncatedNormal(**DRL_config)
+    # policy_net = LinearNormal(**DRL_config)
     value_net = LinearCritic(**DRL_config)
     policy_net.reset()
     value_net.reset()

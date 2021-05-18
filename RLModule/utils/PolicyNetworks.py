@@ -83,7 +83,7 @@ class LinearNormal(nn.Module):
     def __init__(self, **kwargs):
         super(LinearNormal, self).__init__()
 
-        self.linear = nn.Linear(4, 2) # state parameters // for now only 4
+        self.linear = nn.Linear(5, 2) # state parameters // for now only 4
         
         self.learning_rate = kwargs.get('learning_rate',1e-2)
         learning_rate = kwargs.get('learning_rate',1e-2)
@@ -102,8 +102,11 @@ class LinearNormal(nn.Module):
                  lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
         self.baseline = 0.0
 
-    def forward(self, state, sd_tol=1e0):
+    def forward(self, state, sd_tol=1e-2):
         x = self.linear(state)
+        # with torch.no_grad():
+        #     ddx_sigmoid = torch.sigmoid(x[0])*(1.0 - torch.sigmoid(x[0]))
+        # return x[0], torch.exp(x[1]) + sd_tol/(torch.abs(ddx_sigmoid) + 1e-1)
         return x[0], torch.exp(x[1]) + sd_tol
     
     def get_action(self, state):
@@ -114,6 +117,46 @@ class LinearNormal(nn.Module):
         return torch.sigmoid(action), log_prob, params
 
     def reset(self):
+        return None
+    
+    def update_baseline(self, costs):
+        self.baseline = np.minimum(self.baseline,costs[0].item()) + 0.01
+        return self.baseline
+
+class LinearTruncatedNormal(nn.Module):
+    def __init__(self, **kwargs):
+        super(LinearTruncatedNormal, self).__init__()
+        self.linear = nn.Linear(5, 2) # state parameters // for now only 4
+        self.learning_rate = kwargs.get('learning_rate',1e-2)
+        learning_rate = kwargs.get('learning_rate',1e-2)
+        weight_decay = kwargs.get('weight_decay',0.)
+        momentum = kwargs.get('momentum',0.)
+        update_rule = kwargs.get('update_rule','SGD')
+        if update_rule == 'Adam':
+            self.optimizer = optim.Adam(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay)
+        elif update_rule == 'RMSprop':
+            self.optimizer = optim.RMSprop(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+        else:
+            self.optimizer = optim.SGD(self.parameters(), \
+                 lr=learning_rate, weight_decay=weight_decay, momentum=momentum)
+        self.baseline = 0.0
+
+    def forward(self, state, sd_tol=1e-3):
+        x = self.linear(state)
+        return torch.sigmoid(x[0]), torch.exp(x[1]) + sd_tol
+    
+    def get_action(self, state):
+        dist_params = self.forward(state)
+        dist = TruncatedNormal(dist_params[0], dist_params[1])
+        action = dist.sample()
+        log_prob = dist.log_prob(action)
+        return action, log_prob, dist_params
+
+    def reset(self):
+        # self.linear.weight.data.fill_(0.0)
+        # self.linear.bias.data.fill_(0.0)
         return None
     
     def update_baseline(self, costs):
@@ -174,7 +217,7 @@ class LinearCritic(nn.Module):
         self.learning_rate = kwargs.get('learning_rate_critic',1e-2)
         weight_decay = kwargs.get('weight_decay',0.)
         momentum = kwargs.get('momentum',0.)
-        self.linear = nn.Linear(4, 1) # state parameters // for now only 4
+        self.linear = nn.Linear(5, 1) # state parameters // for now only 4
         self.optimizer = optim.SGD(self.parameters(), lr=self.learning_rate, weight_decay=weight_decay, momentum=momentum)
 
     def forward(self, state):
@@ -184,7 +227,7 @@ class LinearCritic(nn.Module):
     def reset(self):
         self.linear.weight.data.fill_(0.0)
         # self.linear.bias.data.fill_(0.0)
-        self.linear.bias.data.fill_(-8.0)
+        self.linear.bias.data.fill_(-0.0)
 
 
 

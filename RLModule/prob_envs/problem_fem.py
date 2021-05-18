@@ -28,15 +28,15 @@ class fem_problem(FEM_env):
 
     def errors2state(self, errors):
         stats = self.stats(errors)
-        state = [stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        state = [stats.nobs, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return  torch.tensor(state).float()
 
     def step(self, theta):
         th_temp = theta.item()
         if th_temp < 0. :
           th_temp = 0.
-        if th_temp > 1. :
-          th_temp = 1. 
+        if th_temp > 0.99 :
+          th_temp = 0.99 
 
         self.RefineAndUpdate(th_temp)
         self.AssembleAndSolve()

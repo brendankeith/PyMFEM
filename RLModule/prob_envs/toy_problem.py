@@ -9,8 +9,8 @@ from prob_envs.FEM_env import FEM_env
 class toy_problem(FEM_env):
 
     # constructor
-    def __init__(self, mesh, order):
-        super().__init__(mesh, order)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.minimum = 4.0
         self.initial_state = 10.0
         self.sd = 0.00001
@@ -54,7 +54,7 @@ class toy_problem(FEM_env):
 
         # cost += 7.255
 
-        state = self.initial_state
+        state = torch.tensor(self.initial_state)
         done = True
         info = None
         return state, cost, done, info
