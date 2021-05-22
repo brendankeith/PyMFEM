@@ -18,12 +18,14 @@ class fem_problem(FEM_env):
        super().__init__(**kwargs)
        penalty = kwargs.get('penalty',0.0)
        self.stats = StatisticsAndCost(penalty)
+       self.prvs_cost = None
 
     def reset(self):
         self.mesh = mfem.Mesh(self.initial_mesh)
         self.setup()
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
+        self.prvs_cost = self.errors2cost(errors)
         return  self.errors2state(errors)# return initial state
 
     def errors2state(self, errors):
@@ -43,10 +45,12 @@ class fem_problem(FEM_env):
         errors = self.GetLocalErrors()
         state = self.errors2state(errors)
         cost = self.errors2cost(errors)
+        rel_cost = cost# / (np.abs(self.prvs_cost) + 1e-6)
+        self.prvs_cost = cost
         # done = True
         done = True if (self.mesh.GetNE() > 1e6) else False
         info = None
-        return state, cost, done, info
+        return state, rel_cost, done, info
 
     def errors2cost(self, errors):
         stats = self.stats(errors)

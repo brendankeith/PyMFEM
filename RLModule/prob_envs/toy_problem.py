@@ -12,11 +12,11 @@ class toy_problem(FEM_env):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.minimum = 4.0
-        self.initial_state = 10.0
+        self.initial_state = [10.0]*5 
         self.sd = 0.00001
 
     def reset(self):
-        initial_state = self.initial_state
+        initial_state = torch.tensor(self.initial_state).float()
         return  initial_state
 
     def step(self, action):
@@ -35,7 +35,7 @@ class toy_problem(FEM_env):
         dist = tdist.Normal(theta,0.01)
         state = dist.sample()
         cts_cost = (state - cost_min)**2
-        cost = torch.floor(steps * cts_cost)/steps + 0.01
+        cost = torch.floor(steps * cts_cost)/steps# + 0.01
 
         # if theta < 0.3:
         #     cost = torch.tensor(-7.255)
@@ -54,7 +54,7 @@ class toy_problem(FEM_env):
 
         # cost += 7.255
 
-        state = torch.tensor(self.initial_state)
+        state = self.initial_state
         done = True
         info = None
         return state, cost, done, info

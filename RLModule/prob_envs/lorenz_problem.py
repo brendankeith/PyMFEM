@@ -124,11 +124,8 @@ if __name__ == "__main__":
 
     checkpoint_period = 1
 
-    eval_period = 1000
-
     episode = 0
     checkpoint_episode = 0
-    eval_episode = 0
     for n in range(nbatches):
         print("training batch %d of %d batches" % (n+1,nbatches))
         agent.train()

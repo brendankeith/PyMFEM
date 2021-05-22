@@ -21,7 +21,7 @@ class StatisticsAndCost:
         # description = describe(e,bias=False)
         description = describe(np.log(e),bias=False)
         # description = describe(np.log(eta) + np.log(len(eta)),bias=False)
-        self.nobs = description.nobs/150
+        self.nobs = description.nobs
         self.min = description.minmax[0]
         self.max = description.minmax[1]
         self.mean = description.mean
@@ -31,8 +31,8 @@ class StatisticsAndCost:
         # self.cost = (self.mean + 7.01)**2
         self.cost = self.mean
         # if self.nobs > 1.0:
-        # if self.nobs < 0.5 or self.nobs > 1.0:
-            # self.cost *= 0.0
+        if self.nobs < 50 or self.nobs > 100:
+            self.cost = 1.0
         # self.cost = self.mean + self.penalty * self.variance
         # self.cost = self.mean + self.penalty * np.sqrt(self.variance) / self.mean
         # self.cost = self.variance / self.mean
