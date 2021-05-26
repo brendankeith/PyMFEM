@@ -31,8 +31,8 @@ class StatisticsAndCost:
         # self.cost = (self.mean + 7.01)**2
         self.cost = self.mean
         # if self.nobs > 1.0:
-        if self.nobs < 50 or self.nobs > 100:
-            self.cost = 1.0
+        # if self.nobs < 50 or self.nobs > 100:
+            # self.cost = 1.0
         # self.cost = self.mean + self.penalty * self.variance
         # self.cost = self.mean + self.penalty * np.sqrt(self.variance) / self.mean
         # self.cost = self.variance / self.mean

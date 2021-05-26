@@ -54,11 +54,11 @@ class RefineAndEstimate(gym.Env):
 
         self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
-        self.n = 0
-        
+        self.previous_cost = 0.0
         self.reset()
     
     def reset(self):
+        self.n = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
         self.setup()
         self.AssembleAndSolve()
@@ -66,6 +66,7 @@ class RefineAndEstimate(gym.Env):
         return  self.errors2obs(errors)
     
     def step(self, action):
+        self.n += 1
         th_temp = action.item()
         if th_temp < 0. :
           th_temp = 0.
@@ -77,7 +78,14 @@ class RefineAndEstimate(gym.Env):
         errors = self.GetLocalErrors()
         obs = self.errors2obs(errors)
         cost = self.errors2cost(errors)
-        done = True if (self.mesh.GetNE() > 100) else False
+        if self.mesh.GetNE() > 100:
+            cost = self.previous_cost
+            done = True
+        else:
+            self.previous_cost = cost
+            cost = 0.0
+            done = False
+        # done = True if (self.mesh.GetNE() > 100) else False
         info = {}
         return obs, -cost, done, info
     
@@ -146,10 +154,10 @@ class RefineAndEstimate(gym.Env):
         self.b.Update()
 
 
-env = RefineAndEstimate(None)
+# env = RefineAndEstimate(None)
 # inspect_serializability(env)
 
-env.render()
+# env.render()
 
 # env.reset()
 # obs, reward, done, _ = env.step(0.5)
@@ -179,7 +187,7 @@ config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = batch_size
 config['sgd_minibatch_size'] = batch_size
 config['rollout_fragment_length'] = batch_size
-config['num_workers'] = 3
+config['num_workers'] = 6
 config['num_gpus'] = 0
 config['lr'] = 1e-4
 # config['num_envs_per_worker'] = 1
@@ -192,7 +200,7 @@ model = policy.model
 cor = []
 ref = []
 
-checkpoint_period = 1
+checkpoint_period = 100
 
 episode = 0
 checkpoint_episode = 0
@@ -201,7 +209,7 @@ for n in range(nbatches):
     agent.train()
     episode += config['train_batch_size']
     checkpoint_episode += config['train_batch_size']
-    if (checkpoint_episode >= checkpoint_period):
+    if (checkpoint_episode >= checkpoint_period and n > 0.9*nbatches):
         checkpoint_episode = 0
         checkpoint_path = agent.save()
         print(checkpoint_path)
@@ -217,4 +225,24 @@ plt.plot(cost,'r',lw=1.3)
 # plt.semilogy(cost,'r',lw=1.3)
 plt.ylabel("cost")
 plt.xlabel("iteration")
-plt.show()    
+plt.show()
+
+agent.restore(checkpoint_path)
+
+# run until episode ends
+import time
+episode_cost = 0
+env = RefineAndEstimate(None)
+done = False
+obs = env.reset()
+print("Num. Elems. = ", env.mesh.GetNE())
+env.render()
+while not done:
+    action = agent.compute_action(obs)
+    obs, reward, done, info = env.step(action)
+    episode_cost -= reward 
+    print("step = ", env.n)
+    print("action = ", action.item())
+    print("Num. Elems. = ", env.mesh.GetNE())
+    time.sleep(0.5)
+    env.render()

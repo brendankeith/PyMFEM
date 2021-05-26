@@ -8,12 +8,13 @@ from utils.PolicyNetworks import Categorical, TwoParamNormal, TwoParamTruncatedN
 from utils.PolicyGradientMethods import REINFORCE
 from prob_envs.problem_fem import fem_problem
 from prob_envs.toy_problem import toy_problem
+from prob_envs.lorenz_problem import lorenz_problem
 import matplotlib.pyplot as plt
 
 prob_config = {
     'mesh_name'         : 'l-shape.mesh',
     'num_unif_ref'      : 1,
-    'order'             : 1,
+    'order'             : 1
 }
 
 dist_choice = 'TwoParamNormal'
@@ -24,15 +25,16 @@ dist_choice = 'TwoParamNormal'
 DRL_config = {
     'batch_size'        : 1,
     'max_steps'         : 1,
-    'max_episodes'   : 1000,
-    'learning_rate'     : 5e-2,
+    'max_episodes'   : 400,
+    'learning_rate'     : 1e-4,
     'update_rule'       :'SGD',
     'num_actions'       : 5
 }
 
 if __name__ == "__main__":
 
-    env = fem_problem(**prob_config)
+    env = lorenz_problem(**prob_config)
+    # env = fem_problem(**prob_config)
     if dist_choice == 'TwoParamNormal':
         policy_net = TwoParamNormal(**DRL_config)
     elif dist_choice == 'TwoParamTruncatedNormal':    
