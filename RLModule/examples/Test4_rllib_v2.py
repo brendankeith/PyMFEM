@@ -33,7 +33,7 @@ from utils.StatisticsAndCost import StatisticsAndCost
 
 class RefineAndEstimate(gym.Env):
 
-    def __init__(self,config,**kwargs):
+    def __init__(self,**kwargs):
         super().__init__()
         self.one = mfem.ConstantCoefficient(1.0)
         self.zero = mfem.ConstantCoefficient(0.0)
@@ -155,8 +155,20 @@ class RefineAndEstimate(gym.Env):
         self.a.Update()
         self.b.Update()
 
+prob_config = {
+    # 'mesh_name'         : 'star.mesh',
+    # 'mesh_name'         : 'l-shape.mesh',
+    # 'num_unif_ref'      : 1,
+    'order'             : 1,
+}
+
 import ray
 import ray.rllib.agents.ppo as ppo
+from ray.tune.registry import register_env
+
+def RefineAndEstimate_kwargs(config):
+    return RefineAndEstimate(**prob_config)
+register_env("my_env", RefineAndEstimate_kwargs)
 
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
@@ -174,7 +186,7 @@ config['num_gpus'] = 0
 config['lr'] = 1e-4
 
 os.environ["RAY_PICKLE_VERBOSE_DEBUG"] = "1"
-agent = ppo.PPOTrainer(config, env=RefineAndEstimate)
+agent = ppo.PPOTrainer(env="my_env")
 policy = agent.get_policy()
 model = policy.model
 
@@ -213,7 +225,7 @@ agent.restore(checkpoint_path)
 # run until episode ends
 import time
 episode_cost = 0
-env = RefineAndEstimate({})
+env = RefineAndEstimate()
 done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())

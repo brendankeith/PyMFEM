@@ -29,7 +29,8 @@ class StatisticsAndCost:
         self.skewness = description.skewness
         self.kurtosis = description.kurtosis
         # self.cost = (self.mean + 7.01)**2
-        self.cost = self.mean
+        self.cost = np.log(np.sum(np.abs(eta)**2))/2
+        # self.cost = self.mean
         # if self.nobs > 1.0:
         # if self.nobs < 50 or self.nobs > 100:
             # self.cost = 1.0
