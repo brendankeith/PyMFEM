@@ -166,10 +166,6 @@ import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 
-def RefineAndEstimate_kwargs(config):
-    return RefineAndEstimate(**prob_config)
-register_env("my_env", RefineAndEstimate_kwargs)
-
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
 
@@ -186,7 +182,8 @@ config['num_gpus'] = 0
 config['lr'] = 1e-4
 
 os.environ["RAY_PICKLE_VERBOSE_DEBUG"] = "1"
-agent = ppo.PPOTrainer(env="my_env")
+register_env("my_env", lambda config : RefineAndEstimate(**prob_config))
+agent = ppo.PPOTrainer(env="my_env", config=config)
 policy = agent.get_policy()
 model = policy.model
 
