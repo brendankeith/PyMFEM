@@ -202,7 +202,7 @@ for n in range(nbatches):
     agent.train()
     episode += config['train_batch_size']
     checkpoint_episode += config['train_batch_size']
-    if (checkpoint_episode >= checkpoint_period and n > 0.9*nbatches):
+    if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
         checkpoint_episode = 0
         checkpoint_path = agent.save()
         print(checkpoint_path)
@@ -225,7 +225,7 @@ agent.restore(checkpoint_path)
 # run until episode ends
 import time
 episode_cost = 0
-env = RefineAndEstimate({})
+env = RefineAndEstimate()
 done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
