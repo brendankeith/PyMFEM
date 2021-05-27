@@ -1,0 +1,90 @@
+"""
+    
+    Script to train an optimal marking policy starting from a fixed initial mesh
+
+    * In order for this to work with rllib, you need to have RLModule in your PYTHONPATH
+
+"""
+
+import os
+import matplotlib.pyplot as plt
+import pandas as pd
+import ray
+import ray.rllib.agents.ppo as ppo
+from ray.tune.registry import register_env
+from prob_envs.FixedInitialMesh import FixedInitialMesh
+
+prob_config = {
+    # 'mesh_name'         : 'star.mesh',
+    'mesh_name'         : 'l-shape.mesh',
+    'num_unif_ref'      : 1,
+    'order'             : 2,
+}
+
+total_episodes = 2000
+batch_size = 16
+nbatches = int(total_episodes/batch_size)
+checkpoint_period = 100
+
+config = ppo.DEFAULT_CONFIG.copy()
+config['train_batch_size'] = batch_size
+config['sgd_minibatch_size'] = batch_size
+config['rollout_fragment_length'] = batch_size
+config['num_workers'] = 6
+config['num_gpus'] = 0
+config['lr'] = 1e-4
+
+
+ray.shutdown()
+ray.init(ignore_reinit_error=True)
+
+register_env("my_env", lambda config : FixedInitialMesh(**prob_config))
+agent = ppo.PPOTrainer(env="my_env", config=config)
+policy = agent.get_policy()
+model = policy.model
+
+cor = []
+ref = []
+
+episode = 0
+checkpoint_episode = 0
+for n in range(nbatches):
+    print("training batch %d of %d batches" % (n+1,nbatches))
+    agent.train()
+    episode += config['train_batch_size']
+    checkpoint_episode += config['train_batch_size']
+    if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
+        checkpoint_episode = 0
+        checkpoint_path = agent.save()
+        print(checkpoint_path)
+
+root_path, _ = os.path.split(checkpoint_path)
+root_path, _ = os.path.split(root_path)
+csv_path = root_path + '/progress.csv'
+df = pd.read_csv(csv_path)
+cost = -df.episode_reward_mean.to_numpy()
+plt.plot(cost,'r',lw=1.3)
+# plt.semilogy(cost,'r',lw=1.3)
+plt.ylabel("cost")
+plt.xlabel("iteration")
+plt.show()
+
+agent.restore(checkpoint_path)
+
+## print
+import time
+episode_cost = 0
+env = FixedInitialMesh()
+done = False
+obs = env.reset()
+print("Num. Elems. = ", env.mesh.GetNE())
+env.render()
+while not done:
+    action = agent.compute_action(obs)
+    obs, reward, done, info = env.step(action)
+    episode_cost -= reward 
+    print("step = ", env.n)
+    print("action = ", action.item())
+    print("Num. Elems. = ", env.mesh.GetNE())
+    time.sleep(0.5)
+    env.render()
