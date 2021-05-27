@@ -78,7 +78,6 @@ class FixedInitialMesh(gym.Env):
             self.previous_cost = cost
             cost = 0.0
             done = False
-        # done = True if (self.mesh.GetNE() > 100) else False
         info = {}
         return obs, -cost, done, info
     
@@ -119,8 +118,6 @@ class FixedInitialMesh(gym.Env):
         self.refiner = mfem.ThresholdRefiner(self.estimator)
         self.refiner.SetTotalErrorFraction(0.7)
 
-      #   print("Poisson problem setup finished ")
-
     def AssembleAndSolve(self):
         self.a.Assemble()
         self.b.Assemble()
@@ -133,7 +130,6 @@ class FixedInitialMesh(gym.Env):
         M = mfem.GSSmoother(AA)
         mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
-    #   return None
 
     def GetLocalErrors(self):
         mfem_errors = self.estimator.GetLocalErrors()
