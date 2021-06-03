@@ -84,6 +84,7 @@ done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
+
 while not done:
     action = agent.compute_action(obs,explore=False)
     obs, reward, done, info = env.step(action)

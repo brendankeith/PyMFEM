@@ -25,10 +25,16 @@ prob_config = {
     'optimization_type' : 'B',
 }
 
-total_episodes = 10000
-batch_size = 32
+# total_episodes = 10000
+# batch_size = 32
+# checkpoint_period = 100
+
+# for quick testing
+total_episodes = 10
+batch_size = 5
+checkpoint_period = 5
+
 nbatches = int(total_episodes/batch_size)
-checkpoint_period = 100
 
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = batch_size

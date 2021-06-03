@@ -106,12 +106,17 @@ class VariableInitialMesh(gym.Env):
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
+        # sol_sock.flush()
         # show mesh only 
         sol_sock.send_solution(self.mesh,  self.zerogf)
+        sol_sock.send_text('keys ARjlmp*******')
         # # show grid function (solution)
         # sol_sock.send_solution(self.mesh,  self.x)
         title = "step " + str(self.n)
         sol_sock.send_text("window_title '" + title)
+
+
+
 
     def errors2obs(self, errors):
         stats = self.stats(errors)
