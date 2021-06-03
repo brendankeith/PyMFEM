@@ -84,7 +84,10 @@ class FixedInitialMesh(gym.Env):
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
-        sol_sock.send_solution(self.mesh,  self.x)
+        # show mesh only 
+        sol_sock.send_solution(self.mesh,  self.zerogf)
+        # # show grid function (solution)
+        # sol_sock.send_solution(self.mesh,  self.x)
         title = "step " + str(self.n)
         sol_sock.send_text("window_title '" + title)
 
@@ -109,6 +112,8 @@ class FixedInitialMesh(gym.Env):
         self.b.AddDomainIntegrator(mfem.DomainLFIntegrator(self.one))
         self.x = mfem.GridFunction(self.fespace)
         self.x.Assign(0.0)
+        self.zerogf = mfem.GridFunction(self.fespace)
+        self.zerogf.Assign(0.0)
         self.ess_bdr = intArray(self.mesh.bdr_attributes.Max())
         self.ess_bdr.Assign(1)
         self.flux_fespace = mfem.FiniteElementSpace(self.mesh, fec, dim)
