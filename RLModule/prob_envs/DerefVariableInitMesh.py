@@ -1,8 +1,3 @@
-"""
-    
-    In order for this to work with rllib, you need to have RLModule in your PYTHONPATH
-
-"""
 import os
 from os.path import expanduser, join
 import gym
@@ -31,14 +26,20 @@ from utils.StatisticsAndCost import StatisticsAndCost
 
 """
 
-class RefineAndEstimate(gym.Env):
+class VariableInitialMesh(gym.Env):
 
-    def __init__(self,config,**kwargs):
+    def __init__(self,**kwargs):
         super().__init__()
         self.one = mfem.ConstantCoefficient(1.0)
         self.zero = mfem.ConstantCoefficient(0.0)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
+        self.num_random_ref = kwargs.get('num_random_ref',1)
+        self.random_ref_prob = kwargs.get('random_ref_prob',0.5)
+
+        self.optimization_type = kwargs.get('optimization_type','A')
+        # self.random_seed = kwargs.get('random_seed',False)
+        # if self.random_seed:
         order = kwargs.get('order',1)
 
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
@@ -47,12 +48,10 @@ class RefineAndEstimate(gym.Env):
             mesh.UniformRefinement()
         self.initial_mesh = mesh
         self.order = order
-        print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
+        # print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
+        self.stats = StatisticsAndCost()
 
-        penalty = kwargs.get('penalty',0.0)
-        self.stats = StatisticsAndCost(penalty)
-
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
         self.previous_cost = 0.0
         self.reset()
@@ -60,48 +59,63 @@ class RefineAndEstimate(gym.Env):
     def reset(self):
         self.n = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
+        for _ in range(self.num_random_ref):
+            self.mesh.RandomRefinement(self.random_ref_prob)
         self.setup()
+        self.sum_of_dofs = np.log(self.fespace.GetTrueVSize())
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
+        self.total_error = self.errors2cost(errors)
         return  self.errors2obs(errors)
     
     def step(self, action):
         self.n += 1
-        th_temp_0 = action[0]
-        if th_temp_0 < 0. :
-          th_temp_0 = 0.
-        if th_temp_0 > 0.99 :
-          th_temp_0 = 0.99 
-        th_temp_1 = action[1]
-        if th_temp_1 < 0. :
-          th_temp_1 = 0.
-        if th_temp_1 > 0.99 :
-          th_temp_1 = 0.99 
+        th_temp = action.item()
+        if th_temp < 0. :
+          th_temp = 0.
+        if th_temp > 0.99 :
+          th_temp = 0.99 
 
-        self.RefineAndUpdate(th_temp_0)
+        self.RefineAndUpdate(th_temp)
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         obs = self.errors2obs(errors)
-        cost = self.errors2cost(errors)
-        if self.mesh.GetNE() > 100:
-            cost = self.previous_cost
-            done = True
+        if self.optimization_type == 'A':
+            total_error = self.errors2cost(errors)
+            num_dofs = self.fespace.GetTrueVSize()
+            cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
+            self.sum_of_dofs += num_dofs
+            if total_error < -7:
+                done = True
+            else:
+                done = False
         else:
-            self.previous_cost = cost
-            cost = 0.0
-            done = False
-        # done = True if (self.mesh.GetNE() > 100) else False
+            self.sum_of_dofs += self.fespace.GetTrueVSize()
+            if self.sum_of_dofs > 5e3:
+            # if self.mesh.GetNE() > 500:
+                cost = 0.0
+                done = True
+            else:
+                total_error = self.errors2cost(errors)
+                cost = total_error - self.total_error
+                self.total_error = total_error
+                done = False
         info = {}
         return obs, -cost, done, info
     
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
-        sol_sock.send_solution(self.mesh,  self.x)
+        # show mesh only 
+        sol_sock.send_solution(self.mesh,  self.zerogf)
+        # # show grid function (solution)
+        # sol_sock.send_solution(self.mesh,  self.x)
+        title = "step " + str(self.n)
+        sol_sock.send_text("window_title '" + title)
 
     def errors2obs(self, errors):
         stats = self.stats(errors)
-        obs = [stats.nobs, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return np.array(obs)
     
     def errors2cost(self, errors):
@@ -120,6 +134,8 @@ class RefineAndEstimate(gym.Env):
         self.b.AddDomainIntegrator(mfem.DomainLFIntegrator(self.one))
         self.x = mfem.GridFunction(self.fespace)
         self.x.Assign(0.0)
+        self.zerogf = mfem.GridFunction(self.fespace)
+        self.zerogf.Assign(0.0)
         self.ess_bdr = intArray(self.mesh.bdr_attributes.Max())
         self.ess_bdr.Assign(1)
         self.flux_fespace = mfem.FiniteElementSpace(self.mesh, fec, dim)
@@ -128,8 +144,6 @@ class RefineAndEstimate(gym.Env):
 
         self.refiner = mfem.ThresholdRefiner(self.estimator)
         self.refiner.SetTotalErrorFraction(0.7)
-
-      #   print("Poisson problem setup finished ")
 
     def AssembleAndSolve(self):
         self.a.Assemble()
@@ -143,7 +157,6 @@ class RefineAndEstimate(gym.Env):
         M = mfem.GSSmoother(AA)
         mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
-    #   return None
 
     def GetLocalErrors(self):
         mfem_errors = self.estimator.GetLocalErrors()
@@ -157,97 +170,3 @@ class RefineAndEstimate(gym.Env):
         self.x.Update()
         self.a.Update()
         self.b.Update()
-
-
-# env = RefineAndEstimate(None)
-# inspect_serializability(env)
-
-# env.render()
-
-# env.reset()
-# obs, reward, done, _ = env.step(0.5)
-# obs, reward, done, _ = env.step(0.5)
-# obs, reward, done, _ = env.step(0.5)
-# env.render()
-
-
-from typing import Dict, TYPE_CHECKING
-import ray
-import ray.rllib.agents.ppo as ppo
-import ray.rllib.agents.dqn as dqn
-from ray.rllib.env import BaseEnv
-from ray.rllib.policy import Policy
-from ray.rllib.policy.sample_batch import SampleBatch
-from ray.rllib.evaluation import MultiAgentEpisode, RolloutWorker
-from ray.rllib.agents.callbacks import DefaultCallbacks
-
-ray.shutdown()
-ray.init(ignore_reinit_error=True)
-
-total_episodes = 1000
-batch_size = 32
-nbatches = int(total_episodes/batch_size)
-
-config = ppo.DEFAULT_CONFIG.copy()
-config['train_batch_size'] = batch_size
-config['sgd_minibatch_size'] = batch_size
-config['rollout_fragment_length'] = batch_size
-config['num_workers'] = 6
-config['num_gpus'] = 0
-config['lr'] = 1e-4
-# config['num_envs_per_worker'] = 1
-
-os.environ["RAY_PICKLE_VERBOSE_DEBUG"] = "1"
-agent = ppo.PPOTrainer(config, env=RefineAndEstimate)
-policy = agent.get_policy()
-model = policy.model
-
-cor = []
-ref = []
-
-checkpoint_period = 100
-
-episode = 0
-checkpoint_episode = 0
-for n in range(nbatches):
-    print("training batch %d of %d batches" % (n+1,nbatches))
-    agent.train()
-    episode += config['train_batch_size']
-    checkpoint_episode += config['train_batch_size']
-    if (checkpoint_episode >= checkpoint_period and n > 0.9*nbatches):
-        checkpoint_episode = 0
-        checkpoint_path = agent.save()
-        print(checkpoint_path)
-
-import matplotlib.pyplot as plt
-import pandas as pd
-root_path, _ = os.path.split(checkpoint_path)
-root_path, _ = os.path.split(root_path)
-csv_path = root_path + '/progress.csv'
-df = pd.read_csv(csv_path)
-cost = -df.episode_reward_mean.to_numpy()
-plt.plot(cost,'r',lw=1.3)
-# plt.semilogy(cost,'r',lw=1.3)
-plt.ylabel("cost")
-plt.xlabel("iteration")
-plt.show()
-
-agent.restore(checkpoint_path)
-
-# run until episode ends
-import time
-episode_cost = 0
-env = RefineAndEstimate(None)
-done = False
-obs = env.reset()
-print("Num. Elems. = ", env.mesh.GetNE())
-env.render()
-while not done:
-    action = agent.compute_action(obs)
-    obs, reward, done, info = env.step(action)
-    episode_cost -= reward 
-    print("step = ", env.n)
-    print("action = ", action.item())
-    print("Num. Elems. = ", env.mesh.GetNE())
-    time.sleep(0.5)
-    env.render()
