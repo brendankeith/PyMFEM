@@ -36,6 +36,8 @@ class VariableInitialMesh(gym.Env):
         num_unif_ref = kwargs.get('num_unif_ref',1)
         self.num_random_ref = kwargs.get('num_random_ref',1)
         self.random_ref_prob = kwargs.get('random_ref_prob',0.5)
+
+        self.optimization_type = kwargs.get('optimization_type','A')
         # self.random_seed = kwargs.get('random_seed',False)
         # if self.random_seed:
         order = kwargs.get('order',1)
@@ -63,6 +65,7 @@ class VariableInitialMesh(gym.Env):
         self.sum_of_dofs = np.log(self.fespace.GetTrueVSize())
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
+        self.total_error = self.errors2cost(errors)
         return  self.errors2obs(errors)
     
     def step(self, action):
@@ -77,33 +80,35 @@ class VariableInitialMesh(gym.Env):
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         obs = self.errors2obs(errors)
-        total_error = self.errors2cost(errors)
-        num_dofs = self.fespace.GetTrueVSize()
-        cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
-        self.sum_of_dofs += num_dofs
-        # cost = self.errors2cost(errors)
-        if total_error < -8:
-            # cost = np.log(self.sum_of_dofs)
-            done = True
+        if self.optimization_type == 'A':
+            total_error = self.errors2cost(errors)
+            num_dofs = self.fespace.GetTrueVSize()
+            cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
+            self.sum_of_dofs += num_dofs
+            if total_error < -7:
+                done = True
+            else:
+                done = False
         else:
-            # cost = 0.0
-            done = False
-        # if self.mesh.GetNE() > 500:
-        #     cost = self.previous_cost
-        #     done = True
-        # else:
-        #     self.previous_cost = cost
-        #     cost = 0.0
-        #     done = False
+            self.sum_of_dofs += self.fespace.GetTrueVSize()
+            if self.sum_of_dofs > 5e3:
+            # if self.mesh.GetNE() > 500:
+                cost = 0.0
+                done = True
+            else:
+                total_error = self.errors2cost(errors)
+                cost = total_error - self.total_error
+                self.total_error = total_error
+                done = False
         info = {}
         return obs, -cost, done, info
     
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
-        self.zerogf = mfem.GridFunction(self.fespace)
-        self.zerogf.Assign(0.0)
+        # show mesh only 
         sol_sock.send_solution(self.mesh,  self.zerogf)
+        # # show grid function (solution)
         # sol_sock.send_solution(self.mesh,  self.x)
         title = "step " + str(self.n)
         sol_sock.send_text("window_title '" + title)
@@ -129,6 +134,8 @@ class VariableInitialMesh(gym.Env):
         self.b.AddDomainIntegrator(mfem.DomainLFIntegrator(self.one))
         self.x = mfem.GridFunction(self.fespace)
         self.x.Assign(0.0)
+        self.zerogf = mfem.GridFunction(self.fespace)
+        self.zerogf.Assign(0.0)
         self.ess_bdr = intArray(self.mesh.bdr_attributes.Max())
         self.ess_bdr.Assign(1)
         self.flux_fespace = mfem.FiniteElementSpace(self.mesh, fec, dim)

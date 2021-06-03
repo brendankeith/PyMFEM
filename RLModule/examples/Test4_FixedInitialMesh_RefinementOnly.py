@@ -16,15 +16,17 @@ from prob_envs.VariableInitialMesh import VariableInitialMesh
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
 
 prob_config = {
-    # 'mesh_name'         : 'star.mesh',
-    'mesh_name'         : 'l-shape.mesh',
+    'mesh_name'         : 'star.mesh',
+    # 'mesh_name'         : 'l-shape.mesh',
     'num_unif_ref'      : 1,
     'num_random_ref'    : 0,
     'order'             : 2,
+    # 'optimization_type' : 'A',
+    'optimization_type' : 'B',
 }
 
-total_episodes = 2000
-batch_size = 16
+total_episodes = 10000
+batch_size = 32
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 100
 
