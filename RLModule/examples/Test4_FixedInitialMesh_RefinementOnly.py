@@ -12,12 +12,14 @@ import pandas as pd
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
-from prob_envs.FixedInitialMesh import FixedInitialMesh
+from prob_envs.VariableInitialMesh import VariableInitialMesh
+# from prob_envs.FixedInitialMesh import FixedInitialMesh
 
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
     'mesh_name'         : 'l-shape.mesh',
     'num_unif_ref'      : 1,
+    'num_random_ref'    : 0,
     'order'             : 2,
 }
 
@@ -38,7 +40,7 @@ config['lr'] = 1e-4
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
 
-register_env("my_env", lambda config : FixedInitialMesh(**prob_config))
+register_env("my_env", lambda config : VariableInitialMesh(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 policy = agent.get_policy()
 model = policy.model
@@ -73,18 +75,20 @@ agent.restore(checkpoint_path)
 
 ## print
 import time
+prob_config['num_random_ref'] = 0
 episode_cost = 0
-env = FixedInitialMesh()
+env = VariableInitialMesh(**prob_config)
 done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
 while not done:
-    action = agent.compute_action(obs)
+    action = agent.compute_action(obs,explore=False)
     obs, reward, done, info = env.step(action)
     episode_cost -= reward 
     print("step = ", env.n)
     print("action = ", action.item())
     print("Num. Elems. = ", env.mesh.GetNE())
+    print("episode cost = ", episode_cost)
     time.sleep(0.5)
     env.render()

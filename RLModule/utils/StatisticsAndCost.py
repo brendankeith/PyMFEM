@@ -24,6 +24,7 @@ class StatisticsAndCost:
         self.variance = description.variance
         self.skewness = description.skewness
         self.kurtosis = description.kurtosis
+        # self.cost = np.log(np.sum(np.abs(eta)**2))/2 + np.log(self.nels) # log of total estimated error
         self.cost = np.log(np.sum(np.abs(eta)**2))/2 # log of total estimated error
         return self.Statistics(self.nels, self.min, self.max, self.mean, self.variance, self.skewness, self.kurtosis, self.cost)
 
