@@ -26,7 +26,7 @@ from utils.StatisticsAndCost import StatisticsAndCost
 
 """
 
-class VariableInitialMesh(gym.Env):
+class DerefVariableInitMesh(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
@@ -51,7 +51,7 @@ class VariableInitialMesh(gym.Env):
         # print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
         self.stats = StatisticsAndCost()
 
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
         self.previous_cost = 0.0
         self.reset()
@@ -70,13 +70,18 @@ class VariableInitialMesh(gym.Env):
     
     def step(self, action):
         self.n += 1
-        th_temp = action.item()
-        if th_temp < 0. :
-          th_temp = 0.
-        if th_temp > 0.99 :
-          th_temp = 0.99 
+        th_temp_0 = action[0]
+        if th_temp_0 < 0. :
+          th_temp_0 = 0.
+        if th_temp_0 > 0.99 :
+          th_temp_0 = 0.99 
+        th_temp_1 = action[1]
+        if th_temp_1 < 0. :
+          th_temp_1 = 0.
+        if th_temp_1 > 0.99 :
+          th_temp_1 = 0.99 
 
-        self.RefineAndUpdate(th_temp)
+        self.RefineAndUpdate(th_temp_0)
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         obs = self.errors2obs(errors)
@@ -106,8 +111,10 @@ class VariableInitialMesh(gym.Env):
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
+        # sol_sock.flush()
         # show mesh only 
         sol_sock.send_solution(self.mesh,  self.zerogf)
+        sol_sock.send_text('keys ARjlmp*******')
         # # show grid function (solution)
         # sol_sock.send_solution(self.mesh,  self.x)
         title = "step " + str(self.n)
