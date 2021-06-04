@@ -70,18 +70,19 @@ class DerefVariableInitMesh(gym.Env):
     
     def step(self, action):
         self.n += 1
-        th_temp_0 = action[0]
+        th_temp_0 = action[0].item()
         if th_temp_0 < 0. :
           th_temp_0 = 0.
         if th_temp_0 > 0.99 :
           th_temp_0 = 0.99 
-        th_temp_1 = action[1]
+        th_temp_1 = action[1].item()
         if th_temp_1 < 0. :
           th_temp_1 = 0.
         if th_temp_1 > 0.99 :
           th_temp_1 = 0.99 
 
         self.RefineAndUpdate(th_temp_0)
+        self.DerefineAndUpdate(th_temp_1)
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         obs = self.errors2obs(errors)
@@ -151,6 +152,8 @@ class DerefVariableInitMesh(gym.Env):
 
         self.refiner = mfem.ThresholdRefiner(self.estimator)
         self.refiner.SetTotalErrorFraction(0.7)
+        self.derefiner = mfem.ThresholdDerefiner(self.estimator)
+        self.derefiner.SetThreshold(0.3)
 
     def AssembleAndSolve(self):
         self.a.Assemble()
@@ -173,6 +176,14 @@ class DerefVariableInitMesh(gym.Env):
     def RefineAndUpdate(self, theta):
         self.refiner.SetTotalErrorFraction(theta)
         self.refiner.Apply(self.mesh)
+        self.fespace.Update()
+        self.x.Update()
+        self.a.Update()
+        self.b.Update()
+
+    def DerefineAndUpdate(self, theta):
+        self.derefiner.SetThreshold(theta)
+        self.derefiner.Apply(self.mesh)
         self.fespace.Update()
         self.x.Update()
         self.a.Update()

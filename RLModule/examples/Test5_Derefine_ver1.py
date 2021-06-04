@@ -17,23 +17,27 @@ from prob_envs.DerefVariableInitMesh import DerefVariableInitMesh
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
 
 prob_config = {
-    'mesh_name'         : 'star.mesh',
-    # 'mesh_name'         : 'l-shape.mesh',
+    # 'mesh_name'         : 'star.mesh',
+    'mesh_name'         : 'l-shape.mesh',
     'num_unif_ref'      : 1,
     'num_random_ref'    : 0,
     'order'             : 2,
-    # 'optimization_type' : 'A',
-    'optimization_type' : 'B',
+    'optimization_type' : 'A',
+    # 'optimization_type' : 'B',
 }
 
 # total_episodes = 10000
 # batch_size = 32
 # checkpoint_period = 100
 
-# for quick testing
-total_episodes = 10
-batch_size = 5
-checkpoint_period = 5
+total_episodes = 4000
+batch_size = 64
+checkpoint_period = 200
+
+# # short run - for debugging
+# total_episodes = 10
+# batch_size = 5
+# checkpoint_period = 5
 
 nbatches = int(total_episodes/batch_size)
 
@@ -91,13 +95,19 @@ done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
-# while not done:
-#     action = agent.compute_action(obs,explore=False)
-#     obs, reward, done, info = env.step(action)
-#     episode_cost -= reward 
-#     print("step = ", env.n)
-#     print("action = ", action.item())
-#     print("Num. Elems. = ", env.mesh.GetNE())
-#     print("episode cost = ", episode_cost)
-#     time.sleep(0.5)
-#     env.render()
+
+max_steps = 5
+while not done:
+    action = agent.compute_action(obs,explore=False)
+    obs, reward, done, info = env.step(action)
+    episode_cost -= reward 
+    print("step = ", env.n)
+    print("refine action   = ", action[0].item())
+    print("derefine action = ", action[1].item())
+    print("Num. Elems. = ", env.mesh.GetNE())
+    print("episode cost = ", episode_cost)
+    time.sleep(0.5)
+    env.render()
+    max_steps -= 1
+    if max_steps == 0:
+        break
