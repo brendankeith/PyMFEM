@@ -6,7 +6,7 @@ import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import StatisticsAndCost
-
+import random
 """
     The main API methods that users of this class need to know are:
 
@@ -32,7 +32,6 @@ class VariableInitialMesh(gym.Env):
         super().__init__()
         self.one = mfem.ConstantCoefficient(1.0)
         self.zero = mfem.ConstantCoefficient(0.0)
-        mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
         self.num_random_ref = kwargs.get('num_random_ref',1)
         self.random_ref_prob = kwargs.get('random_ref_prob',0.5)
@@ -40,12 +39,20 @@ class VariableInitialMesh(gym.Env):
         self.optimization_type = kwargs.get('optimization_type','A')
         # self.random_seed = kwargs.get('random_seed',False)
         # if self.random_seed:
+        self.random_mesh = kwargs.get('random_mesh',False)
         order = kwargs.get('order',1)
+
+        meshlist = ['l-shape.mesh','star.mesh']
+        if self.random_mesh :
+            mesh_name = random.choice(meshlist)
+        else :    
+            mesh_name = kwargs.get('mesh_name','l-shape.mesh')
 
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
         for _ in range(num_unif_ref):
             mesh.UniformRefinement()
+        self.dim = mesh.Dimension()    
         self.initial_mesh = mesh
         self.order = order
         # print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
@@ -53,7 +60,6 @@ class VariableInitialMesh(gym.Env):
 
         self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
-        self.previous_cost = 0.0
         self.reset()
     
     def reset(self):
@@ -62,7 +68,7 @@ class VariableInitialMesh(gym.Env):
         for _ in range(self.num_random_ref):
             self.mesh.RandomRefinement(self.random_ref_prob)
         self.setup()
-        self.sum_of_dofs = np.log(self.fespace.GetTrueVSize())
+        self.sum_of_dofs = self.fespace.GetTrueVSize()
         self.AssembleAndSolve()
         errors = self.GetLocalErrors()
         self.total_error = self.errors2cost(errors)
@@ -85,11 +91,11 @@ class VariableInitialMesh(gym.Env):
             num_dofs = self.fespace.GetTrueVSize()
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if total_error < -7:
+            if np.log(total_error) < -7:
                 done = True
             else:
                 done = False
-        else:
+        elif self.optimization_type == 'B':
             self.sum_of_dofs += self.fespace.GetTrueVSize()
             if self.sum_of_dofs > 5e3:
             # if self.mesh.GetNE() > 500:
@@ -97,8 +103,23 @@ class VariableInitialMesh(gym.Env):
                 done = True
             else:
                 total_error = self.errors2cost(errors)
-                cost = total_error - self.total_error
+                cost = np.log(total_error/self.total_error)
                 self.total_error = total_error
+                done = False
+        else:
+            if self.n == 1:
+                accumulated_cost = 0
+            else:
+                accumulated_cost = np.log(self.total_error*self.sum_of_dofs)
+            self.total_error = self.errors2cost(errors)
+            self.sum_of_dofs += self.fespace.GetTrueVSize()
+            cost = np.log(self.total_error*self.sum_of_dofs) - accumulated_cost
+            if self.n >= 10:
+                done = True
+            elif self.sum_of_dofs > 1e5:
+                cost = 10.0
+                done = True
+            else:
                 done = False
         info = {}
         return obs, -cost, done, info
@@ -106,16 +127,17 @@ class VariableInitialMesh(gym.Env):
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
-        # sol_sock.flush()
-        # show mesh only 
-        sol_sock.send_solution(self.mesh,  self.zerogf)
-        sol_sock.send_text('keys ARjlmp*******')
-        # # show grid function (solution)
-        # sol_sock.send_solution(self.mesh,  self.x)
+        sol_sock.send_solution(self.mesh,  self.x)
         title = "step " + str(self.n)
         sol_sock.send_text("window_title '" + title)
 
-
+    def render_mesh(self):
+        sol_sock = mfem.socketstream("localhost", 19916)
+        sol_sock.precision(8)
+        sol_sock.send_solution(self.mesh,  self.zerogf)
+        sol_sock.send_text('keys ARjlmp*******')
+        title = "step " + str(self.n)
+        sol_sock.send_text("window_title '" + title)
 
 
     def errors2obs(self, errors):
@@ -125,7 +147,7 @@ class VariableInitialMesh(gym.Env):
     
     def errors2cost(self, errors):
         stats = self.stats(errors)
-        return stats.cost
+        return np.exp(stats.cost)
 
     def setup(self):
         # print("Setting up Poisson problem ")
