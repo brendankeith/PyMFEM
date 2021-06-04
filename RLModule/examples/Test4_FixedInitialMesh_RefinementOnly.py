@@ -28,17 +28,16 @@ prob_config = {
     # 'mesh_name'         : 'star.mesh',
     'mesh_name'         : 'l-shape.mesh',
     'num_unif_ref'      : 1,
-    'num_random_ref'    : 0,
+    # 'num_random_ref'    : 2,
     'order'             : 2,
-    'optimization_type' : 'B',
-    # 'optimization_type' : 'B',
-    'random_mesh'       : False
+    'optimization_type' : 'C', # 'A', 'B', 'C'
+    # 'random_mesh'       : True
 }
 
-total_episodes = 1024
-batch_size = 16
+total_episodes = 4000
+batch_size = 64
 nbatches = int(total_episodes/batch_size)
-checkpoint_period = 64
+checkpoint_period = 200
 
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = batch_size
@@ -52,6 +51,7 @@ config['lr'] = 1e-4
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
 env = VariableInitialMesh(**prob_config)
+env.step(np.array([0.5]))
 register_env("my_env", lambda config : VariableInitialMesh(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
