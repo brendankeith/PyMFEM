@@ -6,7 +6,7 @@ import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import StatisticsAndCost
-
+import random
 """
     The main API methods that users of this class need to know are:
 
@@ -32,7 +32,6 @@ class VariableInitialMesh(gym.Env):
         super().__init__()
         self.one = mfem.ConstantCoefficient(1.0)
         self.zero = mfem.ConstantCoefficient(0.0)
-        mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
         self.num_random_ref = kwargs.get('num_random_ref',1)
         self.random_ref_prob = kwargs.get('random_ref_prob',0.5)
@@ -40,12 +39,20 @@ class VariableInitialMesh(gym.Env):
         self.optimization_type = kwargs.get('optimization_type','A')
         # self.random_seed = kwargs.get('random_seed',False)
         # if self.random_seed:
+        self.random_mesh = kwargs.get('random_mesh',False)
         order = kwargs.get('order',1)
+
+        meshlist = ['inline-quad.mesh','l-shape.mesh','star.mesh']
+        if self.random_mesh :
+            mesh_name = random.choice(meshlist)
+        else :    
+            mesh_name = kwargs.get('mesh_name','l-shape.mesh')
 
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
         for _ in range(num_unif_ref):
             mesh.UniformRefinement()
+        self.dim = mesh.Dimension()    
         self.initial_mesh = mesh
         self.order = order
         # print("Number of Elements in mesh = " + str(self.initial_mesh.GetNE()))
@@ -106,16 +113,17 @@ class VariableInitialMesh(gym.Env):
     def render(self):
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
-        # sol_sock.flush()
-        # show mesh only 
-        sol_sock.send_solution(self.mesh,  self.zerogf)
-        sol_sock.send_text('keys ARjlmp*******')
-        # # show grid function (solution)
-        # sol_sock.send_solution(self.mesh,  self.x)
+        sol_sock.send_solution(self.mesh,  self.x)
         title = "step " + str(self.n)
         sol_sock.send_text("window_title '" + title)
 
-
+    def render_mesh(self):
+        sol_sock = mfem.socketstream("localhost", 19916)
+        sol_sock.precision(8)
+        sol_sock.send_solution(self.mesh,  self.zerogf)
+        sol_sock.send_text('keys ARjlmp*******')
+        title = "step " + str(self.n)
+        sol_sock.send_text("window_title '" + title)
 
 
     def errors2obs(self, errors):
