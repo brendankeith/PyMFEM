@@ -17,9 +17,9 @@ from prob_envs.DerefVariableInitMesh import DerefVariableInitMesh
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
 
 prob_config = {
-    # 'mesh_name'         : 'star.mesh',
-    'mesh_name'         : 'l-shape.mesh',
-    'num_unif_ref'      : 1,
+    'mesh_name'         : 'star.mesh',
+    # 'mesh_name'         : 'l-shape.mesh',
+    'num_unif_ref'      : 2,
     'num_random_ref'    : 0,
     'order'             : 2,
     'optimization_type' : 'A',
@@ -96,7 +96,7 @@ obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
 
-max_steps = 5
+# max_steps = 10
 while not done:
     action = agent.compute_action(obs,explore=False)
     obs, reward, done, info = env.step(action)
@@ -107,7 +107,9 @@ while not done:
     print("Num. Elems. = ", env.mesh.GetNE())
     print("episode cost = ", episode_cost)
     time.sleep(0.5)
-    env.render()
-    max_steps -= 1
-    if max_steps == 0:
-        break
+    # env.render()
+    # max_steps -= 1
+    # if max_steps == 0:
+    #     break
+
+env.render()
