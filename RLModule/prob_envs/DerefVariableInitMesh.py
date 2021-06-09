@@ -71,21 +71,12 @@ class DerefVariableInitMesh(gym.Env):
     def step(self, action):
         self.n += 1
         th_temp_0 = action[0].item() # refine threshold
+        if th_temp_0 < 0. :
+          th_temp_0 = 0.
+        if th_temp_0 > 0.99 :
+          th_temp_0 = 0.99 
         th_temp_1 = action[1].item() # derefine threshold
-        # enforces deref < ref threshold
-        th_temp_1 = np.minimum(th_temp_0-0.01, th_temp_1)
-        
-        # if th_temp_0 < 0. :
-        #   th_temp_0 = 0.
-        # if th_temp_0 > 0.99 :
-        #   th_temp_0 = 0.99 
-        
-        # if th_temp_1 < 0. :
-        #   th_temp_1 = 0.
-        # if th_temp_1 > 0.99 :
-        #   th_temp_1 = 0.99 
-        
-        # maybe enforce deref thresh < refine thresh
+        th_temp_1 *= th_temp_0 # enforces deref < ref threshold
 
         self.RefineAndUpdate(th_temp_0)
         self.DerefineAndUpdate(th_temp_1)
@@ -97,7 +88,7 @@ class DerefVariableInitMesh(gym.Env):
             num_dofs = self.fespace.GetTrueVSize()
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if total_error < -5:
+            if total_error < -7:
                 done = True
             else:
                 done = False
