@@ -101,7 +101,7 @@ if __name__ == "__main__":
     ray.shutdown()
     ray.init(ignore_reinit_error=True)
 
-    total_episodes = 100
+    total_episodes = 500
     batch_size = 16
     nbatches = int(total_episodes/batch_size)
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     cor = []
     ref = []
 
-    checkpoint_period = 1
+    checkpoint_period = 100
 
     episode = 0
     checkpoint_episode = 0
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     csv_path = root_path + '/progress.csv'
     df = pd.read_csv(csv_path)
     cost = -df.episode_reward_mean.to_numpy()
-    # plt.plot(cost,'r',lw=1.3)
-    plt.semilogy(cost,'r',lw=1.3)
+    plt.plot(cost,'r',lw=1.3)
+    # plt.semilogy(cost,'r',lw=1.3)
     plt.ylabel("cost")
     plt.xlabel("iteration")
     plt.show()    

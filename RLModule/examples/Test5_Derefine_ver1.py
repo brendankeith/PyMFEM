@@ -13,25 +13,21 @@ import numpy as np
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
-from prob_envs.DerefVariableInitMesh import DerefVariableInitMesh
+from prob_envs.StationaryProblem import DeRefStationaryProblem
+# from prob_envs.DerefVariableInitMesh import DerefVariableInitMesh
 # from prob_envs.VariableInitialMesh import VariableInitialMesh
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
 
 prob_config = {
-    'mesh_name'         : 'star.mesh',
-    # 'mesh_name'         : 'l-shape.mesh',
-    'num_unif_ref'      : 2,
+    # 'mesh_name'         : 'star.mesh',
+    'mesh_name'         : 'l-shape.mesh',
+    'num_unif_ref'      : 3,
     'num_random_ref'    : 0,
     'order'             : 2,
-    'optimization_type' : 'A',
-    # 'optimization_type' : 'B',
+    'optimization_type' : 'dof_threshold',
 }
 
-# total_episodes = 10000
-# batch_size = 32
-# checkpoint_period = 100
-
-total_episodes = 5000
+total_episodes = 10000
 batch_size = 64
 checkpoint_period = 200
 
@@ -54,7 +50,7 @@ config['lr'] = 1e-4
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
 
-register_env("my_env", lambda config : DerefVariableInitMesh(**prob_config))
+register_env("my_env", lambda config : DeRefStationaryProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 policy = agent.get_policy()
 model = policy.model
@@ -94,7 +90,7 @@ agent.restore(checkpoint_path)
 import time
 prob_config['num_random_ref'] = 0
 episode_cost = 0
-env = DerefVariableInitMesh(**prob_config)
+env = DeRefStationaryProblem(**prob_config)
 done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
@@ -105,14 +101,13 @@ while not done:
     obs, reward, done, info = env.step(action)
     episode_cost -= reward
     rlcost = episode_cost
-    print("step = ", env.n)
+    print("step = ", env.k)
     print("refine action   = ", action[0].item())
     print("derefine action = ", action[1].item())
     print("Num. Elems. = ", env.mesh.GetNE())
     print("episode cost = ", episode_cost)
     time.sleep(0.5)
-env.render()
-# env.render_mesh()
+env.RenderMesh()
 
 costs = []
 rlcosts = []
@@ -128,12 +123,12 @@ for i in range(1, nth):
     while not done:
         _, reward, done, info = env.step(action)
         episode_cost -= reward 
-        print("step = ", env.n)
+        print("step = ", env.k)
         print("refine action   = ", action[0].item())
         print("derefine action = ", action[1].item())
         print("Num. Elems. = ", env.mesh.GetNE())
         print("episode cost = ", episode_cost)
-    env.render()    
+    env.RenderMesh()    
     costs.append(episode_cost)
 
     

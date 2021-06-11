@@ -12,7 +12,8 @@ import pandas as pd
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
-from prob_envs.VariableInitialMesh import VariableInitialMesh
+from prob_envs.StationaryProblem import StationaryProblem
+# from prob_envs.VariableInitialMesh import VariableInitialMesh
 import numpy as np
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
 from drawnow import drawnow, figure
@@ -30,12 +31,12 @@ prob_config = {
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
     'order'             : 2,
-    'optimization_type' : 'C', # 'A', 'B', 'C'
+    'optimization_type' : 'step_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
     # 'random_mesh'       : True
 }
 
 total_episodes = 4000
-batch_size = 64
+batch_size = 16
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 200
 
@@ -43,16 +44,15 @@ config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = batch_size
 config['sgd_minibatch_size'] = batch_size
 config['rollout_fragment_length'] = batch_size
-config['num_workers'] = 6
+config['num_workers'] = 3
 config['num_gpus'] = 0
 config['lr'] = 1e-4
 
 
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
-env = VariableInitialMesh(**prob_config)
-env.step(np.array([0.5]))
-register_env("my_env", lambda config : VariableInitialMesh(**prob_config))
+env = StationaryProblem(**prob_config)
+register_env("my_env", lambda config : StationaryProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
 episode = 0
@@ -111,13 +111,12 @@ while not done:
     obs, reward, done, info = env.step(action)
     episode_cost -= reward 
     rlcost = episode_cost
-    print("step = ", env.n)
+    print("step = ", env.k)
     print("action = ", action.item())
     print("Num. Elems. = ", env.mesh.GetNE())
     print("episode cost = ", episode_cost)
-    time.sleep(0.5)
-env.render()
-env.render_mesh()
+    time.sleep(0.05)
+    env.RenderMesh()
 
 
 costs = []
@@ -134,11 +133,10 @@ for i in range(1, nth):
     while not done:
         _, reward, done, info = env.step(action)
         episode_cost -= reward 
-        print("step = ", env.n)
+        print("step = ", env.k)
         print("action = ", action.item())
         print("Num. Elems. = ", env.mesh.GetNE())
         print("episode cost = ", episode_cost)
-    env.render()    
     costs.append(episode_cost)
 
 ax[1].plot(actions,costs,'-or',lw=1.3)

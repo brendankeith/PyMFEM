@@ -88,7 +88,7 @@ class DerefVariableInitMesh(gym.Env):
             num_dofs = self.fespace.GetTrueVSize()
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if total_error < -7:
+            if total_error < -9:
                 done = True
             else:
                 done = False
