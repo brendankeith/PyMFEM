@@ -46,6 +46,7 @@ config['sgd_minibatch_size'] = batch_size
 config['rollout_fragment_length'] = batch_size
 config['num_workers'] = 3
 config['num_gpus'] = 0
+config['gamma'] = 1.0
 config['lr'] = 1e-4
 
 

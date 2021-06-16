@@ -5,14 +5,15 @@ from gym import spaces
 import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
-from utils.StatisticsAndCost import Statistics, TotalError
+from utils.StatisticsAndCost import Statistics, GlobalError
 
 class StationaryProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
-        self.zero = mfem.ConstantCoefficient(0.0)
-        self.one = mfem.ConstantCoefficient(1.0)
+        self.BC = mfem.ConstantCoefficient(0.0)
+        self.RHS = mfem.ConstantCoefficient(1.0)
+        self.coeff = mfem.ConstantCoefficient(1.0)
 
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-3)
@@ -35,11 +36,11 @@ class StationaryProblem(gym.Env):
     def reset(self):
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
-        self.setup()
+        self.Setup()
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
         obs = self.Errors2Observation(self.errors)
-        self.total_error = TotalError(self.errors)
+        self.global_error = GlobalError(self.errors)
         self.sum_of_dofs = self.fespace.GetTrueVSize()
         return obs
     
@@ -50,11 +51,11 @@ class StationaryProblem(gym.Env):
         self.errors = self.GetLocalErrors()
         obs = self.Errors2Observation(self.errors)
         if self.optimization_type == 'error_threshold':
-            total_error = TotalError(self.errors)
+            global_error = GlobalError(self.errors)
             num_dofs = self.fespace.GetTrueVSize()
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if total_error < self.error_threshold:
+            if global_error < self.error_threshold:
                 done = True
             else:
                 done = False
@@ -64,18 +65,18 @@ class StationaryProblem(gym.Env):
                 cost = 0.0
                 done = True
             else:
-                total_error = TotalError(self.errors)
-                cost = np.log(total_error/self.total_error)
-                self.total_error = total_error
+                global_error = GlobalError(self.errors)
+                cost = np.log(global_error/self.global_error)
+                self.global_error = global_error
                 done = False
         else:
             if self.k == 1:
                 accumulated_cost = 0
             else:
-                accumulated_cost = np.log(self.total_error*self.sum_of_dofs)
-            self.total_error = TotalError(self.errors)
+                accumulated_cost = np.log(self.global_error*self.sum_of_dofs)
+            self.global_error = GlobalError(self.errors)
             self.sum_of_dofs += self.fespace.GetTrueVSize()
-            cost = np.log(self.total_error*self.sum_of_dofs) - accumulated_cost
+            cost = np.log(self.global_error*self.sum_of_dofs) - accumulated_cost
             if self.k >= self.step_threshold:
                 done = True
             elif self.sum_of_dofs > self.dof_threshold:
@@ -93,20 +94,21 @@ class StationaryProblem(gym.Env):
         title = "step " + str(self.k)
         sol_sock.send_text("window_title '" + title)
 
-    def setup(self):
+    def Setup(self):
         # print("Setting up Poisson problem ")
         dim = self.mesh.Dimension()
         fec = mfem.H1_FECollection(self.order, dim)
         self.fespace = mfem.FiniteElementSpace(self.mesh, fec)
         self.a = mfem.BilinearForm(self.fespace)
         self.b = mfem.LinearForm(self.fespace)
-        integ = mfem.DiffusionIntegrator(self.one)
+        integ = mfem.DiffusionIntegrator(self.coeff)
         self.a.AddDomainIntegrator(integ)
-        self.b.AddDomainIntegrator(mfem.DomainLFIntegrator(self.one))
+        self.b.AddDomainIntegrator(mfem.DomainLFIntegrator(self.RHS))
         self.x = mfem.GridFunction(self.fespace)
         self.x.Assign(0.0)
         self.ess_bdr = intArray(self.mesh.bdr_attributes.Max())
         self.ess_bdr.Assign(1)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
         self.flux_fespace = mfem.FiniteElementSpace(self.mesh, fec, dim)
         self.estimator =  mfem.ZienkiewiczZhuEstimator(integ, self.x, self.flux_fespace,
                                                        own_flux_fes = False)
@@ -141,7 +143,7 @@ class StationaryProblem(gym.Env):
         sol_sock.precision(8)
         zerogf = mfem.GridFunction(self.fespace)
         zerogf.Assign(0.0)
-        sol_sock.send_solution(self.mesh,  zerogf)
+        sol_sock.send_solution(self.mesh, zerogf)
         title = "step " + str(self.k)
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
 

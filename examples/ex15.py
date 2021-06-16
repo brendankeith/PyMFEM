@@ -194,7 +194,7 @@ rhs = RhsCoefficient()
   
 integ = mfem.DiffusionIntegrator(one)
 a.AddDomainIntegrator(integ)
-b.AddDomainIntegrator(mfem.DomainLFIntegrator(rhs))   
+b.AddDomainIntegrator(mfem.DomainLFIntegrator(rhs))
 
 # 7. The solution vector x and the associated finite element grid function
 #    will be maintained over the AMR iterations.
@@ -284,7 +284,7 @@ while  (time < t_final + 1e-10):
          # 18. Send the solution by socket to a GLVis server
          if visualization:
              sout.precision(8)
-             sout.send_solution(mesh, x)             
+             sout.send_solution(mesh, x)          
 
          # 19. Apply the refiner on the mesh. The refiner calls the error
          #     estimator to obtain element errors, then it selects elements to

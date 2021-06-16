@@ -28,7 +28,7 @@ def Statistics(eta):
 ########################
 # total estimated error
 ########################
-def TotalError(eta):
+def GlobalError(eta):
     return np.sqrt(np.sum(np.abs(eta)**2))
     
 # class Statistics:
