@@ -83,15 +83,22 @@ class MovingLoadProblem(DeRefStationaryProblem):
             log_global_error = np.log(global_error)
             if self.k == 1:
                 cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error
-                self.rolling_average = log_num_dofs + log_global_error
+                self.rolling_average = alpha*log_num_dofs/d + (1-alpha)*log_global_error
             else:
-                cost = (alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)/self.k
-                self.rolling_average *= (self.k-1)/self.k
-                self.rolling_average += (alpha*log_num_dofs/d + (1-alpha)*log_global_error)/self.k
+                # beta = max(1/self.k,0.1)
+                # cost = beta*(alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)
+                # cost = (alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)/self.k
+                # self.rolling_average *= (self.k-1)/self.k
+                # self.rolling_average += (alpha*log_num_dofs/d + (1-alpha)*log_global_error)/self.k
+                cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average
+                self.rolling_average = alpha*log_num_dofs/d + (1-alpha)*log_global_error
             if num_dofs > self.dof_threshold:
+                cost += 10.0/self.k
                 done = True
-                cost += 10.0
-        info = {'global_error':global_error, 'num_dofs':num_dofs}
+            # if random.uniform(0,1) < 0.05:
+                # done = True
+                # self.reset()
+        info = {'global_error':global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
         return obs, -cost, done, info
 
     def AssembleAndSolve(self):

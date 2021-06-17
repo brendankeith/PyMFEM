@@ -16,7 +16,7 @@ class StationaryProblem(gym.Env):
         self.coeff = mfem.ConstantCoefficient(1.0)
 
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
-        self.error_threshold = kwargs.get('error_threshold',1e-3)
+        self.error_threshold = kwargs.get('error_threshold',5e-4)
         self.dof_threshold = kwargs.get('dof_threshold',1e4)
         self.step_threshold = kwargs.get('step_threshold',10)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
@@ -50,15 +50,18 @@ class StationaryProblem(gym.Env):
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
         obs = self.Errors2Observation(self.errors)
+        num_dofs = self.fespace.GetTrueVSize()
         if self.optimization_type == 'error_threshold':
-            global_error = GlobalError(self.errors)
-            num_dofs = self.fespace.GetTrueVSize()
+            self.global_error = GlobalError(self.errors)
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if global_error < self.error_threshold:
+            if self.global_error < self.error_threshold:
                 done = True
             else:
                 done = False
+            if self.sum_of_dofs > 1e6 or self.k > 100:
+                cost = 0.0
+                done = True
         elif self.optimization_type == 'dof_threshold':
             self.sum_of_dofs += self.fespace.GetTrueVSize()
             if self.sum_of_dofs > self.dof_threshold:
@@ -84,7 +87,7 @@ class StationaryProblem(gym.Env):
                 done = True
             else:
                 done = False
-        info = {}
+        info = {'global_error':self.global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
         return obs, -cost, done, info
     
     def render(self):

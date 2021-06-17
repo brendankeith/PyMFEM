@@ -7,6 +7,7 @@
 """
 
 import os
+import time
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -39,7 +40,7 @@ prob_config = {
     'mesh_name'         : 'inline-quad.mesh',
     'num_unif_ref'      : 3,
     'order'             : 1,
-    'dof_threshold'     : 1e4,
+    'dof_threshold'     : 5e4,
     'convex_coeff'      : 0.20, # E[ alpha*log_num_dofs/d + (1-alpha)*log_global_error ]
 }
 
@@ -54,7 +55,7 @@ prob_config = {
 # env.step(np.array([0.9,0.1]))
 # env.RenderRHS()
 
-total_episodes = 4000
+total_episodes = 1000
 batch_size = 64
 checkpoint_period = 200
 
@@ -67,7 +68,7 @@ config['rollout_fragment_length'] = batch_size
 config['num_workers'] = 6
 config['num_gpus'] = 0
 config['gamma'] = 1.0
-config['lr'] = 1e-4
+config['lr'] = 1e-3
 config['no_done_at_end'] = True
 
 ray.shutdown()
@@ -101,16 +102,16 @@ csv_path = root_path + '/progress.csv'
 df = pd.read_csv(csv_path)
 cost = -df.episode_reward_mean.to_numpy()
 
-fig, ax = plt.subplots(1)
-ax.plot(cost,'r',lw=1.3)
-# ax.semilogy(cost,'r',lw=1.3)
-ax.set_ylabel("cost")
-ax.set_xlabel("iteration")
+fig, ax = plt.subplots(3)
+ax[0].plot(cost,'r',lw=1.3)
+ax[0].set_ylabel("cost")
+ax[0].set_xlabel("iteration")
 
 agent.restore(checkpoint_path)
 
 ## print
-import time
+wait = input("Press any key to continue.")
+time.sleep(0.5)
 prob_config['num_random_ref'] = 0
 episode_cost = 0
 env = MovingLoadProblem(**prob_config)
@@ -119,6 +120,9 @@ obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
 # env.render()
 
+ref_thetas = []
+deref_thetas = []
+max_local_errors = []
 for _ in range(200):
     action = agent.compute_action(obs,explore=False)
     obs, reward, done, info = env.step(action)
@@ -128,11 +132,29 @@ for _ in range(200):
     print("refine action   = ", action[0].item())
     print("derefine action = ", action[1].item())
     print("Num. Elems. = ", env.mesh.GetNE())
+    print("Num dofs", info['num_dofs'])
     print("episode cost = ", episode_cost)
     print("Error estimate", info['global_error'])
-    print("Num dofs", info['num_dofs'])
+    ref_thetas.append(action[0].item())
+    deref_thetas.append(action[0].item()*action[1].item())
+    max_local_errors.append(info['max_local_errors'])
     time.sleep(0.1)
     env.RenderMesh()
+ref_thetas = np.array(ref_thetas)
+deref_thetas = np.array(deref_thetas)
+max_local_errors = np.array(max_local_errors)
+
+ax[1].plot(ref_thetas,'r',lw=1.3,label='ref. param.')
+ax[1].plot(deref_thetas,'b',lw=1.3,label='deref. param.')
+ax[1].set_ylabel("Parameter")
+ax[1].set_xlabel("Iteration")
+ax[1].legend()
+
+ax[2].plot(ref_thetas*max_local_errors,'r',lw=1.3,label='ref. thresh.')
+ax[2].plot(deref_thetas*max_local_errors,'b',lw=1.3,label='deref. thresh.')
+ax[2].set_ylabel("Threshold")
+ax[2].set_xlabel("Iteration")
+ax[2].legend()
 
 # costs = []
 # rlcosts = []
