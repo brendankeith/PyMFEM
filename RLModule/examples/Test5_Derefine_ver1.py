@@ -18,12 +18,15 @@ from prob_envs.StationaryProblem import DeRefStationaryProblem
 train = True
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
-    'mesh_name'         : 'l-shape.mesh',
+    # 'mesh_name'         : 'l-shape.mesh',
+    'mesh_name'         : 'inline-quad.mesh',
     'num_unif_ref'      : 3,
     'num_random_ref'    : 0,
     'order'             : 2,
     # 'optimization_type' : 'error_threshold',
     'optimization_type' : 'dof_threshold',
+    'problem_type' : 'wavefront',
+    # 'problem_type' : 'laplace',
 }
 
 total_episodes = 10000
@@ -31,9 +34,9 @@ batch_size = 64
 checkpoint_period = 200
 
 # # short run - for debugging
-# total_episodes = 10
-# batch_size = 5
-# checkpoint_period = 5
+# total_episodes = 100
+# batch_size = 10
+# checkpoint_period = 20
 
 nbatches = int(total_episodes/batch_size)
 
@@ -154,6 +157,8 @@ for i in range(1, nth):
         print("episode cost = ", episode_cost)
     env.RenderMesh()    
     costs.append(episode_cost)
+
+env.render()
 
 ax[3].plot(actions,costs,'-or',lw=1.3)
 ax[3].plot(actions,rlcosts,'-b',lw=1.3)
