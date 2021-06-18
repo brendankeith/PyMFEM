@@ -2,14 +2,14 @@
 %{
 #include "fem/bilinearform.hpp"
 #include "numpy/arrayobject.h"
-#include "pyoperator.hpp"           
+#include "pyoperator.hpp"
+using namespace mfem;
 %}
 
 %init %{
 import_array();
 %}
 %include "exception.i"
- //%import "cpointers.i"
 
 %import "globals.i"
 %import "array.i"
@@ -29,14 +29,12 @@ import_array();
 %import "gridfunc.i"
 %include "../common/exception_director.i"
 
-%pointer_class(int, intp);
-
-%ignore mfem::MixedBilinearForm::AddBoundaryDomainIntegrator;
 %feature("director") mfem::BilinearForm;
 
 namespace mfem { 
 %pythonprepend BilinearForm::AddDomainIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]	     
     self._integrators.append(bfi)
     bfi.thisown=0 
    %}
@@ -69,16 +67,24 @@ namespace mfem {
    %} 
 %pythonprepend MixedBilinearForm::AddDomainIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]	     
     self._integrators.append(bfi)
     bfi.thisown=0 
    %}
 %pythonprepend MixedBilinearForm::AddBoundaryIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]	     
     self._integrators.append(bfi)
     bfi.thisown=0 
    %} 
 %pythonprepend MixedBilinearForm::AddTraceFaceIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    self._integrators.append(bfi)
+    bfi.thisown=0 
+   %}
+%pythonprepend MixedBilinearForm::AddBdrTraceFaceIntegrator %{
+    if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]	     
     self._integrators.append(bfi)
     bfi.thisown=0 
    %} 
@@ -87,7 +93,6 @@ namespace mfem {
     self._spmat.append(val)
     val.thisown=0 
    %}
-
 %pythonprepend DiscreteLinearOperator::AddDomainInterpolator %{
     if not hasattr(self, "_integrators"): self._integrators = []
     self._integrators.append(di)

@@ -7,11 +7,15 @@
 #include <fstream>  
 #include <iostream>
 #include <stdio.h>  
-#include "io_stream.hpp"    
+#include "../common/io_stream.hpp"
+#include "general/zstr.hpp"  
 #include "general/array.hpp"
 #include "numpy/arrayobject.h"
 %}
 
+%begin %{
+#define PY_SSIZE_T_CLEAN
+%}
 %init %{
 import_array();
 %}
@@ -21,11 +25,12 @@ import_array();
 
 %import "../common/io_stream_typemap.i"
 OSTREAM_TYPEMAP(std::ostream&)
+ISTREAM_TYPEMAP(std::istream&)
 
 %import "mem_manager.i"
 
 // intArray constructor
-%typemap(in) (int *_data, int asize) {
+%typemap(in) (int *data_, int asize) {
   int i;
   if (!PyList_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting a list");
@@ -46,16 +51,16 @@ OSTREAM_TYPEMAP(std::ostream&)
     }
   }
 }
-%typemap(typecheck) (int *_data, int asize) {
+%typemap(typecheck) (int *data_, int asize) {
    $1 = PyList_Check($input) ? 1 : 0;
 }
 
-%typemap(newfree) (int *_data,  int asize) {
+%typemap(newfree) (int *data_,  int asize) {
    if ($1) free($1);
 }
 
 // dobuleArray constructor
-%typemap(in) (double *_data, int asize) {
+%typemap(in) (double *data_, int asize) {
   int i;
   if (!PyList_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting a list");
@@ -76,11 +81,11 @@ OSTREAM_TYPEMAP(std::ostream&)
     }
   }
 }
-%typemap(typecheck) (double *_data, int asize) {
+%typemap(typecheck) (double *data_, int asize) {
    $1 = PyList_Check($input) ? 1 : 0;
 }
 
-%typemap(newfree) (double *_data,  int asize) {
+%typemap(newfree) (double *data_,  int asize) {
    if ($1) free($1);
 }
 

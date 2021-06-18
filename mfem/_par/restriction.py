@@ -95,6 +95,7 @@ import mfem._par.handle
 import mfem._par.hypre
 import mfem._par.bilininteg
 import mfem._par.linearform
+import mfem._par.nonlininteg
 L2FaceValues_SingleValued = _restriction.L2FaceValues_SingleValued
 
 L2FaceValues_DoubleValued = _restriction.L2FaceValues_DoubleValued
@@ -128,6 +129,11 @@ class ElementRestriction(mfem._par.operators.Operator):
         r"""MultTransposeUnsigned(ElementRestriction self, Vector x, Vector y)"""
         return _restriction.ElementRestriction_MultTransposeUnsigned(self, x, y)
     MultTransposeUnsigned = _swig_new_instance_method(_restriction.ElementRestriction_MultTransposeUnsigned)
+
+    def MultLeftInverse(self, x, y):
+        r"""MultLeftInverse(ElementRestriction self, Vector x, Vector y)"""
+        return _restriction.ElementRestriction_MultLeftInverse(self, x, y)
+    MultLeftInverse = _swig_new_instance_method(_restriction.ElementRestriction_MultLeftInverse)
 
     def BooleanMask(self, y):
         r"""BooleanMask(ElementRestriction self, Vector y)"""
@@ -231,14 +237,14 @@ class L2FaceRestriction(mfem._par.operators.Operator):
         return _restriction.L2FaceRestriction_MultTranspose(self, x, y)
     MultTranspose = _swig_new_instance_method(_restriction.L2FaceRestriction_MultTranspose)
 
-    def FillI(self, mat, face_mat):
-        r"""FillI(L2FaceRestriction self, SparseMatrix mat, SparseMatrix face_mat)"""
-        return _restriction.L2FaceRestriction_FillI(self, mat, face_mat)
+    def FillI(self, mat, keep_nbr_block=False):
+        r"""FillI(L2FaceRestriction self, SparseMatrix mat, bool const keep_nbr_block=False)"""
+        return _restriction.L2FaceRestriction_FillI(self, mat, keep_nbr_block)
     FillI = _swig_new_instance_method(_restriction.L2FaceRestriction_FillI)
 
-    def FillJAndData(self, ea_data, mat, face_mat):
-        r"""FillJAndData(L2FaceRestriction self, Vector ea_data, SparseMatrix mat, SparseMatrix face_mat)"""
-        return _restriction.L2FaceRestriction_FillJAndData(self, ea_data, mat, face_mat)
+    def FillJAndData(self, ea_data, mat, keep_nbr_block=False):
+        r"""FillJAndData(L2FaceRestriction self, Vector ea_data, SparseMatrix mat, bool const keep_nbr_block=False)"""
+        return _restriction.L2FaceRestriction_FillJAndData(self, ea_data, mat, keep_nbr_block)
     FillJAndData = _swig_new_instance_method(_restriction.L2FaceRestriction_FillJAndData)
 
     def AddFaceMatricesToElementMatrices(self, fea_data, ea_data):

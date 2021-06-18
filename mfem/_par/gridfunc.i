@@ -11,14 +11,18 @@
   #include "fem/gridfunc.hpp"
   #include "pycoefficient.hpp"
   #include "numpy/arrayobject.h"
-  #include "io_stream.hpp"        
+  #include "../common/io_stream.hpp"
+  using namespace mfem;
+%}
+
+%begin %{
+#define PY_SSIZE_T_CLEAN
 %}
 
 %init %{
 import_array();
 %}
-//%include "../common/cpointers.i"
-//%import "cpointers.i"
+
 %include "exception.i"
 
 %include "std_string.i"
@@ -51,11 +55,11 @@ def GetNodalValues(self, *args):
     from .vector import Vector
     if len(args) == 1:
         vec = Vector()
-        _gridfunc.GridFunction_GetNodalValues(self, vec, args[0])
+        $action(self, vec, args[0])
         vec.thisown = 0
         return vec.GetDataArray()
     else:
-        return _gridfunc.GridFunction_GetNodalValues(self, *args)
+        return $action(self, *args)
 %}
 
 %typemap(in) const mfem::IntegrationRule *irs[]{
@@ -86,16 +90,7 @@ def GetNodalValues(self, *args):
 
 namespace mfem{
 %extend GridFunction{
-GridFunction(Mesh *m, const char *grid_file){
-   mfem::GridFunction *gf;
-   std::ifstream igrid(grid_file);
-   if (!igrid) {
-      std::cerr << "\nCan not open grid function file: " << grid_file << '\n' << std::endl;
-      return NULL;
-   }
-   gf = new mfem::GridFunction(m, igrid);
-   return gf;
-}
+     
 GridFunction(mfem::FiniteElementSpace *fes, const mfem::Vector &v, int offset){
    mfem::GridFunction *gf;   
    gf = new mfem::GridFunction(fes, v.GetData() + offset);
@@ -203,3 +198,5 @@ fem/gridfunc.hpp:   void SaveSTL(std::ostream &out, int TimesToRefine = 1);
 
 OSTREAM_ADD_DEFAULT_FILE(GridFunction, Save)
 OSTREAM_ADD_DEFAULT_FILE(QuadratureFunction, Save)
+
+  

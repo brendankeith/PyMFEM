@@ -3100,25 +3100,30 @@ namespace Swig {
 #define SWIGTYPE_p_MPI_Comm swig_types[0]
 #define SWIGTYPE_p_PyMFEM__wFILE swig_types[1]
 #define SWIGTYPE_p_RefCoord swig_types[2]
-#define SWIGTYPE_p_char swig_types[3]
-#define SWIGTYPE_p_hex_t swig_types[4]
-#define SWIGTYPE_p_int swig_types[5]
-#define SWIGTYPE_p_mfem__GridFunction swig_types[6]
-#define SWIGTYPE_p_mfem__IntegrationRule swig_types[7]
-#define SWIGTYPE_p_mfem__L2_FECollection swig_types[8]
-#define SWIGTYPE_p_mfem__MatrixVectorProductCoefficient swig_types[9]
-#define SWIGTYPE_p_mfem__Mesh swig_types[10]
-#define SWIGTYPE_p_mfem__OperatorHandle swig_types[11]
-#define SWIGTYPE_p_mfem__socketbuf swig_types[12]
-#define SWIGTYPE_p_mfem__socketserver swig_types[13]
-#define SWIGTYPE_p_mfem__socketstream swig_types[14]
-#define SWIGTYPE_p_pri_t swig_types[15]
-#define SWIGTYPE_p_quad_t swig_types[16]
-#define SWIGTYPE_p_seg_t swig_types[17]
-#define SWIGTYPE_p_tet_t swig_types[18]
-#define SWIGTYPE_p_tri_t swig_types[19]
-static swig_type_info *swig_types[21];
-static swig_module_info swig_module = {swig_types, 20, 0, 0, 0, 0};
+#define SWIGTYPE_p__HYPRE_ExecutionPolicy swig_types[3]
+#define SWIGTYPE_p__HYPRE_MemoryLocation swig_types[4]
+#define SWIGTYPE_p_char swig_types[5]
+#define SWIGTYPE_p_double swig_types[6]
+#define SWIGTYPE_p_hex_t swig_types[7]
+#define SWIGTYPE_p_int swig_types[8]
+#define SWIGTYPE_p_mfem__ConvectionIntegrator swig_types[9]
+#define SWIGTYPE_p_mfem__DGTraceIntegrator swig_types[10]
+#define SWIGTYPE_p_mfem__GridFunction swig_types[11]
+#define SWIGTYPE_p_mfem__IntegrationRule swig_types[12]
+#define SWIGTYPE_p_mfem__L2_FECollection swig_types[13]
+#define SWIGTYPE_p_mfem__MatrixVectorProductCoefficient swig_types[14]
+#define SWIGTYPE_p_mfem__Mesh swig_types[15]
+#define SWIGTYPE_p_mfem__OperatorHandle swig_types[16]
+#define SWIGTYPE_p_mfem__socketbuf swig_types[17]
+#define SWIGTYPE_p_mfem__socketserver swig_types[18]
+#define SWIGTYPE_p_mfem__socketstream swig_types[19]
+#define SWIGTYPE_p_pri_t swig_types[20]
+#define SWIGTYPE_p_quad_t swig_types[21]
+#define SWIGTYPE_p_seg_t swig_types[22]
+#define SWIGTYPE_p_tet_t swig_types[23]
+#define SWIGTYPE_p_tri_t swig_types[24]
+static swig_type_info *swig_types[26];
+static swig_module_info swig_module = {swig_types, 25, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -3223,7 +3228,7 @@ namespace swig {
 
 
 #include <iostream>
-#include "io_stream.hpp"      
+#include "../common/io_stream.hpp"      
 #include "mesh/mesh_headers.hpp"
 #include "fem/gridfunc.hpp"  
 #include "general/socketstream.hpp"
@@ -3565,6 +3570,11 @@ SWIGINTERN PyObject *_wrap_new_socketbuf__SWIG_0(PyObject *SWIGUNUSEDPARM(self),
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketbuf, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3592,6 +3602,11 @@ SWIGINTERN PyObject *_wrap_new_socketbuf__SWIG_1(PyObject *SWIGUNUSEDPARM(self),
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketbuf, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3628,6 +3643,11 @@ SWIGINTERN PyObject *_wrap_new_socketbuf__SWIG_2(PyObject *SWIGUNUSEDPARM(self),
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketbuf, SWIG_POINTER_NEW |  0 );
   if (alloc1 == SWIG_NEWOBJ) delete[] buf1;
@@ -3724,6 +3744,11 @@ SWIGINTERN PyObject *_wrap_socketbuf_attach(PyObject *SWIGUNUSEDPARM(self), PyOb
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -3754,6 +3779,11 @@ SWIGINTERN PyObject *_wrap_socketbuf_detach(PyObject *SWIGUNUSEDPARM(self), PyOb
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -3804,6 +3834,11 @@ SWIGINTERN PyObject *_wrap_socketbuf_open(PyObject *SWIGUNUSEDPARM(self), PyObje
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
@@ -3836,6 +3871,11 @@ SWIGINTERN PyObject *_wrap_socketbuf_close(PyObject *SWIGUNUSEDPARM(self), PyObj
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -3866,6 +3906,11 @@ SWIGINTERN PyObject *_wrap_socketbuf_getsocketdescriptor(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -3896,6 +3941,11 @@ SWIGINTERN PyObject *_wrap_socketbuf_is_open(PyObject *SWIGUNUSEDPARM(self), PyO
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_bool(static_cast< bool >(result));
   return resultobj;
@@ -3925,6 +3975,11 @@ SWIGINTERN PyObject *_wrap_delete_socketbuf(PyObject *SWIGUNUSEDPARM(self), PyOb
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -3966,6 +4021,11 @@ SWIGINTERN PyObject *_wrap_new_socketstream__SWIG_0(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3994,6 +4054,11 @@ SWIGINTERN PyObject *_wrap_new_socketstream__SWIG_1(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -4031,6 +4096,11 @@ SWIGINTERN PyObject *_wrap_new_socketstream__SWIG_2(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -4077,6 +4147,11 @@ SWIGINTERN PyObject *_wrap_new_socketstream__SWIG_3(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, SWIG_POINTER_NEW |  0 );
   if (alloc1 == SWIG_NEWOBJ) delete[] buf1;
@@ -4201,6 +4276,11 @@ SWIGINTERN PyObject *_wrap_socketstream_rdbuf(PyObject *SWIGUNUSEDPARM(self), Py
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketbuf, 0 |  0 );
   return resultobj;
@@ -4251,6 +4331,11 @@ SWIGINTERN PyObject *_wrap_socketstream_open(PyObject *SWIGUNUSEDPARM(self), PyO
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
@@ -4283,6 +4368,11 @@ SWIGINTERN PyObject *_wrap_socketstream_close(PyObject *SWIGUNUSEDPARM(self), Py
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -4313,6 +4403,11 @@ SWIGINTERN PyObject *_wrap_socketstream_is_open(PyObject *SWIGUNUSEDPARM(self), 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_bool(static_cast< bool >(result));
   return resultobj;
@@ -4342,6 +4437,11 @@ SWIGINTERN PyObject *_wrap_delete_socketstream(PyObject *SWIGUNUSEDPARM(self), P
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4377,6 +4477,11 @@ SWIGINTERN PyObject *_wrap_socketstream_precision__SWIG_0(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -4405,6 +4510,11 @@ SWIGINTERN PyObject *_wrap_socketstream_precision__SWIG_1(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -4506,6 +4616,11 @@ SWIGINTERN PyObject *_wrap_socketstream_send_solution(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4547,6 +4662,11 @@ SWIGINTERN PyObject *_wrap_socketstream_send_text(PyObject *SWIGUNUSEDPARM(self)
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
@@ -4578,6 +4698,11 @@ SWIGINTERN PyObject *_wrap_socketstream_flush(PyObject *SWIGUNUSEDPARM(self), Py
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4615,6 +4740,11 @@ SWIGINTERN PyObject *_wrap_socketstream___lshift____SWIG_0(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, 0 |  0 );
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
@@ -4654,6 +4784,11 @@ SWIGINTERN PyObject *_wrap_socketstream___lshift____SWIG_1(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, 0 |  0 );
   return resultobj;
@@ -4695,6 +4830,11 @@ SWIGINTERN PyObject *_wrap_socketstream___lshift____SWIG_2(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, 0 |  0 );
   return resultobj;
@@ -4736,6 +4876,11 @@ SWIGINTERN PyObject *_wrap_socketstream___lshift____SWIG_3(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, 0 |  0 );
   return resultobj;
@@ -4841,6 +4986,11 @@ SWIGINTERN PyObject *_wrap_socketstream_endline(PyObject *SWIGUNUSEDPARM(self), 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketstream, 0 |  0 );
   return resultobj;
@@ -4893,6 +5043,11 @@ SWIGINTERN PyObject *_wrap_new_socketserver(PyObject *SWIGUNUSEDPARM(self), PyOb
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__socketserver, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -4923,6 +5078,11 @@ SWIGINTERN PyObject *_wrap_socketserver_good(PyObject *SWIGUNUSEDPARM(self), PyO
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_bool(static_cast< bool >(result));
   return resultobj;
@@ -4953,6 +5113,11 @@ SWIGINTERN PyObject *_wrap_socketserver_close(PyObject *SWIGUNUSEDPARM(self), Py
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -4981,6 +5146,11 @@ SWIGINTERN PyObject *_wrap_socketserver_accept__SWIG_0(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -5020,6 +5190,11 @@ SWIGINTERN PyObject *_wrap_socketserver_accept__SWIG_1(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -5090,6 +5265,11 @@ SWIGINTERN PyObject *_wrap_delete_socketserver(PyObject *SWIGUNUSEDPARM(self), P
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -5229,9 +5409,14 @@ static PyMethodDef SwigMethods_proxydocs[] = {
 static swig_type_info _swigt__p_MPI_Comm = {"_p_MPI_Comm", "MPI_Comm *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_PyMFEM__wFILE = {"_p_PyMFEM__wFILE", "PyMFEM::wFILE *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_RefCoord = {"_p_RefCoord", "RefCoord *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p__HYPRE_ExecutionPolicy = {"_p__HYPRE_ExecutionPolicy", "enum _HYPRE_ExecutionPolicy *|HYPRE_ExecutionPolicy *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p__HYPRE_MemoryLocation = {"_p__HYPRE_MemoryLocation", "enum _HYPRE_MemoryLocation *|HYPRE_MemoryLocation *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_char = {"_p_char", "char *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_double = {"_p_double", "HYPRE_Real *|HYPRE_Complex *|double *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_hex_t = {"_p_hex_t", "hex_t *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_int = {"_p_int", "int *|HYPRE_Int *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_int = {"_p_int", "int *|HYPRE_Int *|HYPRE_BigInt *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_mfem__ConvectionIntegrator = {"_p_mfem__ConvectionIntegrator", "mfem::ConvectionIntegrator *|mfem::NonconservativeConvectionIntegrator *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_mfem__DGTraceIntegrator = {"_p_mfem__DGTraceIntegrator", "mfem::DGTraceIntegrator *|mfem::ConservativeDGTraceIntegrator *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__GridFunction = {"_p_mfem__GridFunction", "mfem::GridFunction *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__IntegrationRule = {"_p_mfem__IntegrationRule", "mfem::IntegrationRule *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__L2_FECollection = {"_p_mfem__L2_FECollection", "mfem::L2_FECollection *|mfem::DG_FECollection *", 0, 0, (void*)0, 0};
@@ -5251,9 +5436,14 @@ static swig_type_info *swig_type_initial[] = {
   &_swigt__p_MPI_Comm,
   &_swigt__p_PyMFEM__wFILE,
   &_swigt__p_RefCoord,
+  &_swigt__p__HYPRE_ExecutionPolicy,
+  &_swigt__p__HYPRE_MemoryLocation,
   &_swigt__p_char,
+  &_swigt__p_double,
   &_swigt__p_hex_t,
   &_swigt__p_int,
+  &_swigt__p_mfem__ConvectionIntegrator,
+  &_swigt__p_mfem__DGTraceIntegrator,
   &_swigt__p_mfem__GridFunction,
   &_swigt__p_mfem__IntegrationRule,
   &_swigt__p_mfem__L2_FECollection,
@@ -5273,9 +5463,14 @@ static swig_type_info *swig_type_initial[] = {
 static swig_cast_info _swigc__p_MPI_Comm[] = {  {&_swigt__p_MPI_Comm, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_PyMFEM__wFILE[] = {  {&_swigt__p_PyMFEM__wFILE, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_RefCoord[] = {  {&_swigt__p_RefCoord, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p__HYPRE_ExecutionPolicy[] = {  {&_swigt__p__HYPRE_ExecutionPolicy, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p__HYPRE_MemoryLocation[] = {  {&_swigt__p__HYPRE_MemoryLocation, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_double[] = {  {&_swigt__p_double, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_hex_t[] = {  {&_swigt__p_hex_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_int[] = {  {&_swigt__p_int, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_mfem__ConvectionIntegrator[] = {  {&_swigt__p_mfem__ConvectionIntegrator, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_mfem__DGTraceIntegrator[] = {  {&_swigt__p_mfem__DGTraceIntegrator, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__GridFunction[] = {  {&_swigt__p_mfem__GridFunction, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__IntegrationRule[] = {  {&_swigt__p_mfem__IntegrationRule, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__L2_FECollection[] = {  {&_swigt__p_mfem__L2_FECollection, 0, 0, 0},{0, 0, 0, 0}};
@@ -5295,9 +5490,14 @@ static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_MPI_Comm,
   _swigc__p_PyMFEM__wFILE,
   _swigc__p_RefCoord,
+  _swigc__p__HYPRE_ExecutionPolicy,
+  _swigc__p__HYPRE_MemoryLocation,
   _swigc__p_char,
+  _swigc__p_double,
   _swigc__p_hex_t,
   _swigc__p_int,
+  _swigc__p_mfem__ConvectionIntegrator,
+  _swigc__p_mfem__DGTraceIntegrator,
   _swigc__p_mfem__GridFunction,
   _swigc__p_mfem__IntegrationRule,
   _swigc__p_mfem__L2_FECollection,

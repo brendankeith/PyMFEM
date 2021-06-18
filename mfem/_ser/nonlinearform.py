@@ -88,6 +88,7 @@ import mfem._ser.bilininteg
 import mfem._ser.fe_coll
 import mfem._ser.lininteg
 import mfem._ser.linearform
+import mfem._ser.nonlininteg
 import mfem._ser.element
 import mfem._ser.table
 import mfem._ser.hash
@@ -96,7 +97,6 @@ import mfem._ser.vtk
 import mfem._ser.handle
 import mfem._ser.restriction
 import mfem._ser.bilinearform
-import mfem._ser.nonlininteg
 class NonlinearForm(mfem._ser.operators.Operator):
     r"""Proxy of C++ mfem::NonlinearForm class."""
 
@@ -150,6 +150,11 @@ class NonlinearForm(mfem._ser.operators.Operator):
         return _nonlinearform.NonlinearForm_AddInteriorFaceIntegrator(self, nlfi)
 
 
+    def GetInteriorFaceIntegrators(self):
+        r"""GetInteriorFaceIntegrators(NonlinearForm self) -> mfem::Array< mfem::NonlinearFormIntegrator * > const &"""
+        return _nonlinearform.NonlinearForm_GetInteriorFaceIntegrators(self)
+    GetInteriorFaceIntegrators = _swig_new_instance_method(_nonlinearform.NonlinearForm_GetInteriorFaceIntegrators)
+
     def AddBdrFaceIntegrator(self, *args):
         r"""
         AddBdrFaceIntegrator(NonlinearForm self, NonlinearFormIntegrator nlfi)
@@ -164,6 +169,11 @@ class NonlinearForm(mfem._ser.operators.Operator):
 
         return _nonlinearform.NonlinearForm_AddBdrFaceIntegrator(self, *args)
 
+
+    def GetBdrFaceIntegrators(self):
+        r"""GetBdrFaceIntegrators(NonlinearForm self) -> mfem::Array< mfem::NonlinearFormIntegrator * > const &"""
+        return _nonlinearform.NonlinearForm_GetBdrFaceIntegrators(self)
+    GetBdrFaceIntegrators = _swig_new_instance_method(_nonlinearform.NonlinearForm_GetBdrFaceIntegrators)
 
     def SetEssentialBC(self, bdr_attr_is_ess, rhs=None):
         r"""SetEssentialBC(NonlinearForm self, intArray bdr_attr_is_ess, Vector rhs=None)"""

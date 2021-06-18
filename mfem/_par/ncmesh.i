@@ -5,9 +5,10 @@
 %{
 #include <fstream>
 #include <iostream>
-  
-#include "io_stream.hpp"         
+
+#include "../common/io_stream.hpp"
 #include "mesh/ncmesh.hpp"
+#include "general/zstr.hpp"
 #include "numpy/arrayobject.h"      
 %}
 
@@ -23,6 +24,7 @@ import_array();
 
 %import "../common/io_stream_typemap.i"
 OSTREAM_TYPEMAP(std::ostream&)
+ISTREAM_TYPEMAP(std::istream&)
 
 %immutable embeddings;
 %include  "mesh/ncmesh.hpp"
@@ -34,9 +36,9 @@ OSTREAM_TYPEMAP(std::ostream&)
  */
 
 #ifndef SWIGIMPORTED
-OSTREAM_ADD_DEFAULT_STDOUT_FILE(NCMesh, PrintVertexParents)
-OSTREAM_ADD_DEFAULT_STDOUT_FILE(NCMesh, PrintCoarseElements)
-OSTREAM_ADD_DEFAULT_FILE(NCMesh, PrintStats)
+ //OSTREAM_ADD_DEFAULT_STDOUT_FILE(NCMesh, PrintVertexParents)
+ //OSTREAM_ADD_DEFAULT_STDOUT_FILE(NCMesh, PrintCoarseElements)
+ //OSTREAM_ADD_DEFAULT_FILE(NCMesh, PrintStats)
 #endif
 
 namespace mfem{

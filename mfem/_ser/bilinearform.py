@@ -66,70 +66,6 @@ class _SwigNonDynamicMeta(type):
 
 import weakref
 
-class intp(object):
-    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-    __repr__ = _swig_repr
-
-    def __init__(self):
-        _bilinearform.intp_swiginit(self, _bilinearform.new_intp())
-    __swig_destroy__ = _bilinearform.delete_intp
-
-    def assign(self, value):
-        return _bilinearform.intp_assign(self, value)
-    assign = _swig_new_instance_method(_bilinearform.intp_assign)
-
-    def value(self):
-        return _bilinearform.intp_value(self)
-    value = _swig_new_instance_method(_bilinearform.intp_value)
-
-    def cast(self):
-        return _bilinearform.intp_cast(self)
-    cast = _swig_new_instance_method(_bilinearform.intp_cast)
-
-    @staticmethod
-    def frompointer(t):
-        return _bilinearform.intp_frompointer(t)
-    frompointer = _swig_new_static_method(_bilinearform.intp_frompointer)
-
-# Register intp in _bilinearform:
-_bilinearform.intp_swigregister(intp)
-
-def intp_frompointer(t):
-    return _bilinearform.intp_frompointer(t)
-intp_frompointer = _bilinearform.intp_frompointer
-
-class doublep(object):
-    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-    __repr__ = _swig_repr
-
-    def __init__(self):
-        _bilinearform.doublep_swiginit(self, _bilinearform.new_doublep())
-    __swig_destroy__ = _bilinearform.delete_doublep
-
-    def assign(self, value):
-        return _bilinearform.doublep_assign(self, value)
-    assign = _swig_new_instance_method(_bilinearform.doublep_assign)
-
-    def value(self):
-        return _bilinearform.doublep_value(self)
-    value = _swig_new_instance_method(_bilinearform.doublep_value)
-
-    def cast(self):
-        return _bilinearform.doublep_cast(self)
-    cast = _swig_new_instance_method(_bilinearform.doublep_cast)
-
-    @staticmethod
-    def frompointer(t):
-        return _bilinearform.doublep_frompointer(t)
-    frompointer = _swig_new_static_method(_bilinearform.doublep_frompointer)
-
-# Register doublep in _bilinearform:
-_bilinearform.doublep_swigregister(doublep)
-
-def doublep_frompointer(t):
-    return _bilinearform.doublep_frompointer(t)
-doublep_frompointer = _bilinearform.doublep_frompointer
-
 import mfem._ser.globals
 import mfem._ser.mem_manager
 import mfem._ser.array
@@ -160,6 +96,8 @@ import mfem._ser.vertex
 import mfem._ser.vtk
 import mfem._ser.handle
 import mfem._ser.restriction
+AssemblyLevel_LEGACY = _bilinearform.AssemblyLevel_LEGACY
+
 AssemblyLevel_LEGACYFULL = _bilinearform.AssemblyLevel_LEGACYFULL
 
 AssemblyLevel_FULL = _bilinearform.AssemblyLevel_FULL
@@ -202,6 +140,11 @@ class BilinearForm(mfem._ser.matrix.Matrix):
         r"""GetAssemblyLevel(BilinearForm self) -> mfem::AssemblyLevel"""
         return _bilinearform.BilinearForm_GetAssemblyLevel(self)
     GetAssemblyLevel = _swig_new_instance_method(_bilinearform.BilinearForm_GetAssemblyLevel)
+
+    def GetHybridization(self):
+        r"""GetHybridization(BilinearForm self) -> Hybridization *"""
+        return _bilinearform.BilinearForm_GetHybridization(self)
+    GetHybridization = _swig_new_instance_method(_bilinearform.BilinearForm_GetHybridization)
 
     def EnableStaticCondensation(self):
         r"""EnableStaticCondensation(BilinearForm self)"""
@@ -369,15 +312,19 @@ class BilinearForm(mfem._ser.matrix.Matrix):
         return _bilinearform.BilinearForm_SpMatElim(self, *args)
     SpMatElim = _swig_new_instance_method(_bilinearform.BilinearForm_SpMatElim)
 
-    def AddDomainIntegrator(self, bfi):
-        r"""AddDomainIntegrator(BilinearForm self, BilinearFormIntegrator bfi)"""
+    def AddDomainIntegrator(self, *args):
+        r"""
+        AddDomainIntegrator(BilinearForm self, BilinearFormIntegrator bfi)
+        AddDomainIntegrator(BilinearForm self, BilinearFormIntegrator bfi, intArray elem_marker)
+        """
 
         if not hasattr(self, "_integrators"): self._integrators = []
+        bfi = args[0]
         self._integrators.append(bfi)
         bfi.thisown=0 
 
 
-        return _bilinearform.BilinearForm_AddDomainIntegrator(self, bfi)
+        return _bilinearform.BilinearForm_AddDomainIntegrator(self, *args)
 
 
     def AddBoundaryIntegrator(self, *args):
@@ -387,7 +334,7 @@ class BilinearForm(mfem._ser.matrix.Matrix):
         """
 
         if not hasattr(self, "_integrators"): self._integrators = []
-        bfi = args[0]	     
+        bfi = args[0]
         self._integrators.append(bfi)
         bfi.thisown=0 
 
@@ -445,6 +392,11 @@ class BilinearForm(mfem._ser.matrix.Matrix):
         r"""GetOutputProlongation(BilinearForm self) -> Operator"""
         return _bilinearform.BilinearForm_GetOutputProlongation(self)
     GetOutputProlongation = _swig_new_instance_method(_bilinearform.BilinearForm_GetOutputProlongation)
+
+    def GetOutputRestrictionTranspose(self):
+        r"""GetOutputRestrictionTranspose(BilinearForm self) -> Operator"""
+        return _bilinearform.BilinearForm_GetOutputRestrictionTranspose(self)
+    GetOutputRestrictionTranspose = _swig_new_instance_method(_bilinearform.BilinearForm_GetOutputRestrictionTranspose)
 
     def GetOutputRestriction(self):
         r"""GetOutputRestriction(BilinearForm self) -> Operator"""
@@ -674,6 +626,7 @@ class MixedBilinearForm(mfem._ser.matrix.Matrix):
         r"""AddDomainIntegrator(MixedBilinearForm self, BilinearFormIntegrator bfi)"""
 
         if not hasattr(self, "_integrators"): self._integrators = []
+        bfi = args[0]
         self._integrators.append(bfi)
         bfi.thisown=0 
 
@@ -688,6 +641,7 @@ class MixedBilinearForm(mfem._ser.matrix.Matrix):
         """
 
         if not hasattr(self, "_integrators"): self._integrators = []
+        bfi = args[0]
         self._integrators.append(bfi)
         bfi.thisown=0 
 
@@ -711,8 +665,15 @@ class MixedBilinearForm(mfem._ser.matrix.Matrix):
         AddBdrTraceFaceIntegrator(MixedBilinearForm self, BilinearFormIntegrator bfi)
         AddBdrTraceFaceIntegrator(MixedBilinearForm self, BilinearFormIntegrator bfi, intArray bdr_marker)
         """
+
+        if not hasattr(self, "_integrators"): self._integrators = []
+        bfi = args[0]
+        self._integrators.append(bfi)
+        bfi.thisown=0 
+
+
         return _bilinearform.MixedBilinearForm_AddBdrTraceFaceIntegrator(self, *args)
-    AddBdrTraceFaceIntegrator = _swig_new_instance_method(_bilinearform.MixedBilinearForm_AddBdrTraceFaceIntegrator)
+
 
     def GetDBFI(self):
         r"""GetDBFI(MixedBilinearForm self) -> mfem::Array< mfem::BilinearFormIntegrator * > *"""
@@ -897,10 +858,20 @@ class DiscreteLinearOperator(MixedBilinearForm):
         return _bilinearform.DiscreteLinearOperator_GetDI(self)
     GetDI = _swig_new_instance_method(_bilinearform.DiscreteLinearOperator_GetDI)
 
+    def SetAssemblyLevel(self, assembly_level):
+        r"""SetAssemblyLevel(DiscreteLinearOperator self, mfem::AssemblyLevel assembly_level)"""
+        return _bilinearform.DiscreteLinearOperator_SetAssemblyLevel(self, assembly_level)
+    SetAssemblyLevel = _swig_new_instance_method(_bilinearform.DiscreteLinearOperator_SetAssemblyLevel)
+
     def Assemble(self, skip_zeros=1):
         r"""Assemble(DiscreteLinearOperator self, int skip_zeros=1)"""
         return _bilinearform.DiscreteLinearOperator_Assemble(self, skip_zeros)
     Assemble = _swig_new_instance_method(_bilinearform.DiscreteLinearOperator_Assemble)
+
+    def GetOutputRestrictionTranspose(self):
+        r"""GetOutputRestrictionTranspose(DiscreteLinearOperator self) -> Operator"""
+        return _bilinearform.DiscreteLinearOperator_GetOutputRestrictionTranspose(self)
+    GetOutputRestrictionTranspose = _swig_new_instance_method(_bilinearform.DiscreteLinearOperator_GetOutputRestrictionTranspose)
     __swig_destroy__ = _bilinearform.delete_DiscreteLinearOperator
 
 # Register DiscreteLinearOperator in _bilinearform:

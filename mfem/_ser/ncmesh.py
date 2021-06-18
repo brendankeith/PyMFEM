@@ -66,86 +66,6 @@ class _SwigNonDynamicMeta(type):
 
 import weakref
 
-class intp(object):
-    r"""Proxy of C++ intp class."""
-
-    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-    __repr__ = _swig_repr
-
-    def __init__(self):
-        r"""__init__(intp self) -> intp"""
-        _ncmesh.intp_swiginit(self, _ncmesh.new_intp())
-    __swig_destroy__ = _ncmesh.delete_intp
-
-    def assign(self, value):
-        r"""assign(intp self, int value)"""
-        return _ncmesh.intp_assign(self, value)
-    assign = _swig_new_instance_method(_ncmesh.intp_assign)
-
-    def value(self):
-        r"""value(intp self) -> int"""
-        return _ncmesh.intp_value(self)
-    value = _swig_new_instance_method(_ncmesh.intp_value)
-
-    def cast(self):
-        r"""cast(intp self) -> int *"""
-        return _ncmesh.intp_cast(self)
-    cast = _swig_new_instance_method(_ncmesh.intp_cast)
-
-    @staticmethod
-    def frompointer(t):
-        r"""frompointer(int * t) -> intp"""
-        return _ncmesh.intp_frompointer(t)
-    frompointer = _swig_new_static_method(_ncmesh.intp_frompointer)
-
-# Register intp in _ncmesh:
-_ncmesh.intp_swigregister(intp)
-
-def intp_frompointer(t):
-    r"""intp_frompointer(int * t) -> intp"""
-    return _ncmesh.intp_frompointer(t)
-intp_frompointer = _ncmesh.intp_frompointer
-
-class doublep(object):
-    r"""Proxy of C++ doublep class."""
-
-    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
-    __repr__ = _swig_repr
-
-    def __init__(self):
-        r"""__init__(doublep self) -> doublep"""
-        _ncmesh.doublep_swiginit(self, _ncmesh.new_doublep())
-    __swig_destroy__ = _ncmesh.delete_doublep
-
-    def assign(self, value):
-        r"""assign(doublep self, double value)"""
-        return _ncmesh.doublep_assign(self, value)
-    assign = _swig_new_instance_method(_ncmesh.doublep_assign)
-
-    def value(self):
-        r"""value(doublep self) -> double"""
-        return _ncmesh.doublep_value(self)
-    value = _swig_new_instance_method(_ncmesh.doublep_value)
-
-    def cast(self):
-        r"""cast(doublep self) -> double *"""
-        return _ncmesh.doublep_cast(self)
-    cast = _swig_new_instance_method(_ncmesh.doublep_cast)
-
-    @staticmethod
-    def frompointer(t):
-        r"""frompointer(double * t) -> doublep"""
-        return _ncmesh.doublep_frompointer(t)
-    frompointer = _swig_new_static_method(_ncmesh.doublep_frompointer)
-
-# Register doublep in _ncmesh:
-_ncmesh.doublep_swigregister(doublep)
-
-def doublep_frompointer(t):
-    r"""doublep_frompointer(double * t) -> doublep"""
-    return _ncmesh.doublep_frompointer(t)
-doublep_frompointer = _ncmesh.doublep_frompointer
-
 import mfem._ser.mesh
 import mfem._ser.matrix
 import mfem._ser.vector
@@ -172,6 +92,7 @@ import mfem._ser.table
 import mfem._ser.hash
 import mfem._ser.bilininteg
 import mfem._ser.linearform
+import mfem._ser.nonlininteg
 import mfem._ser.vertex
 import mfem._ser.vtk
 class Refinement(object):
@@ -248,6 +169,11 @@ class CoarseFineTransformations(object):
 # Register CoarseFineTransformations in _ncmesh:
 _ncmesh.CoarseFineTransformations_swigregister(CoarseFineTransformations)
 
+
+def Swap(a, b):
+    r"""Swap(CoarseFineTransformations a, CoarseFineTransformations b)"""
+    return _ncmesh.Swap(a, b)
+Swap = _ncmesh.Swap
 class NCMesh(object):
     r"""Proxy of C++ mfem::NCMesh class."""
 
@@ -256,7 +182,8 @@ class NCMesh(object):
 
     def __init__(self, *args):
         r"""
-        __init__(NCMesh self, Mesh mesh, std::istream * vertex_parents=None) -> NCMesh
+        __init__(NCMesh self, Mesh mesh) -> NCMesh
+        __init__(NCMesh self, std::istream & input, int version, int & curved, int & is_nc) -> NCMesh
         __init__(NCMesh self, NCMesh other) -> NCMesh
         """
         _ncmesh.NCMesh_swiginit(self, _ncmesh.new_NCMesh(*args))
@@ -419,20 +346,20 @@ class NCMesh(object):
         return _ncmesh.NCMesh_GetElementFacesAttributes(self, i, faces, fattr)
     GetElementFacesAttributes = _swig_new_instance_method(_ncmesh.NCMesh_GetElementFacesAttributes)
 
-    def LoadVertexParents(self, input):
-        r"""LoadVertexParents(NCMesh self, std::istream & input)"""
-        return _ncmesh.NCMesh_LoadVertexParents(self, input)
-    LoadVertexParents = _swig_new_instance_method(_ncmesh.NCMesh_LoadVertexParents)
+    def Print(self, out):
+        r"""Print(NCMesh self, std::ostream & out)"""
+        return _ncmesh.NCMesh_Print(self, out)
+    Print = _swig_new_instance_method(_ncmesh.NCMesh_Print)
 
-    def LoadCoarseElements(self, input):
-        r"""LoadCoarseElements(NCMesh self, std::istream & input)"""
-        return _ncmesh.NCMesh_LoadCoarseElements(self, input)
-    LoadCoarseElements = _swig_new_instance_method(_ncmesh.NCMesh_LoadCoarseElements)
+    def IsLegacyLoaded(self):
+        r"""IsLegacyLoaded(NCMesh self) -> bool"""
+        return _ncmesh.NCMesh_IsLegacyLoaded(self)
+    IsLegacyLoaded = _swig_new_instance_method(_ncmesh.NCMesh_IsLegacyLoaded)
 
-    def SetVertexPositions(self, vertices):
-        r"""SetVertexPositions(NCMesh self, mfem::Array< mfem::Vertex > const & vertices)"""
-        return _ncmesh.NCMesh_SetVertexPositions(self, vertices)
-    SetVertexPositions = _swig_new_instance_method(_ncmesh.NCMesh_SetVertexPositions)
+    def LegacyToNewVertexOrdering(self, order):
+        r"""LegacyToNewVertexOrdering(NCMesh self, intArray order)"""
+        return _ncmesh.NCMesh_LegacyToNewVertexOrdering(self, order)
+    LegacyToNewVertexOrdering = _swig_new_instance_method(_ncmesh.NCMesh_LegacyToNewVertexOrdering)
 
     def Trim(self):
         r"""Trim(NCMesh self)"""
@@ -448,32 +375,6 @@ class NCMesh(object):
         r"""PrintMemoryDetail(NCMesh self) -> int"""
         return _ncmesh.NCMesh_PrintMemoryDetail(self)
     PrintMemoryDetail = _swig_new_instance_method(_ncmesh.NCMesh_PrintMemoryDetail)
-
-    def PrintVertexParents(self, *args):
-        r"""
-        PrintVertexParents(NCMesh self, std::ostream & out)
-        PrintVertexParents(NCMesh self, char const * file, int precision=8)
-        PrintVertexParents(NCMesh self)
-        """
-        return _ncmesh.NCMesh_PrintVertexParents(self, *args)
-    PrintVertexParents = _swig_new_instance_method(_ncmesh.NCMesh_PrintVertexParents)
-
-    def PrintCoarseElements(self, *args):
-        r"""
-        PrintCoarseElements(NCMesh self, std::ostream & out)
-        PrintCoarseElements(NCMesh self, char const * file, int precision=8)
-        PrintCoarseElements(NCMesh self)
-        """
-        return _ncmesh.NCMesh_PrintCoarseElements(self, *args)
-    PrintCoarseElements = _swig_new_instance_method(_ncmesh.NCMesh_PrintCoarseElements)
-
-    def PrintStats(self, *args):
-        r"""
-        PrintStats(NCMesh self, std::ostream & out=out)
-        PrintStats(NCMesh self, char const * file, int precision=8)
-        """
-        return _ncmesh.NCMesh_PrintStats(self, *args)
-    PrintStats = _swig_new_instance_method(_ncmesh.NCMesh_PrintStats)
 
 # Register NCMesh in _ncmesh:
 _ncmesh.NCMesh_swigregister(NCMesh)
@@ -499,7 +400,7 @@ class RefinementArray(object):
         __init__(RefinementArray self) -> RefinementArray
         __init__(RefinementArray self, mfem::MemoryType mt) -> RefinementArray
         __init__(RefinementArray self, int asize) -> RefinementArray
-        __init__(RefinementArray self, Refinement _data, int asize) -> RefinementArray
+        __init__(RefinementArray self, Refinement data_, int asize) -> RefinementArray
         __init__(RefinementArray self, RefinementArray src) -> RefinementArray
         """
         _ncmesh.RefinementArray_swiginit(self, _ncmesh.new_RefinementArray(*args))

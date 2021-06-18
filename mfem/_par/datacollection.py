@@ -105,6 +105,7 @@ import mfem._par.hypre
 import mfem._par.restriction
 import mfem._par.bilininteg
 import mfem._par.linearform
+import mfem._par.nonlininteg
 import mfem._par.pgridfunc
 import mfem._par.pfespace
 import mfem._par.pmesh
@@ -335,7 +336,7 @@ class VisItFieldInfo(object):
     def __init__(self, *args):
         r"""
         __init__(VisItFieldInfo self) -> VisItFieldInfo
-        __init__(VisItFieldInfo self, std::string _association, int _num_components, int _lod=1) -> VisItFieldInfo
+        __init__(VisItFieldInfo self, std::string association_, int num_components_, int lod_=1) -> VisItFieldInfo
         """
         _datacollection.VisItFieldInfo_swiginit(self, _datacollection.new_VisItFieldInfo(*args))
     __swig_destroy__ = _datacollection.delete_VisItFieldInfo

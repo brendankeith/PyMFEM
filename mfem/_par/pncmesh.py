@@ -114,6 +114,7 @@ import mfem._par.hypre
 import mfem._par.restriction
 import mfem._par.bilininteg
 import mfem._par.linearform
+import mfem._par.nonlininteg
 import mfem._par.communication
 import mfem._par.sets
 class ParNCMesh(mfem._par.ncmesh.NCMesh):
@@ -125,6 +126,7 @@ class ParNCMesh(mfem._par.ncmesh.NCMesh):
     def __init__(self, *args):
         r"""
         __init__(ParNCMesh self, MPI_Comm comm, NCMesh ncmesh, int * part=None) -> ParNCMesh
+        __init__(ParNCMesh self, MPI_Comm comm, std::istream & input, int version, int & curved, int & is_nc) -> ParNCMesh
         __init__(ParNCMesh self, ParNCMesh other) -> ParNCMesh
         """
         _pncmesh.ParNCMesh_swiginit(self, _pncmesh.new_ParNCMesh(*args))

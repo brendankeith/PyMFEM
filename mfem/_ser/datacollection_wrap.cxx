@@ -3106,9 +3106,9 @@ namespace Swig {
 #define SWIGTYPE_p_QFieldMapType swig_types[6]
 #define SWIGTYPE_p_RefCoord swig_types[7]
 #define SWIGTYPE_p_char swig_types[8]
-#define SWIGTYPE_p_doublep swig_types[9]
-#define SWIGTYPE_p_hex_t swig_types[10]
-#define SWIGTYPE_p_intp swig_types[11]
+#define SWIGTYPE_p_hex_t swig_types[9]
+#define SWIGTYPE_p_mfem__ConvectionIntegrator swig_types[10]
+#define SWIGTYPE_p_mfem__DGTraceIntegrator swig_types[11]
 #define SWIGTYPE_p_mfem__DataCollection swig_types[12]
 #define SWIGTYPE_p_mfem__GridFunction swig_types[13]
 #define SWIGTYPE_p_mfem__IntegrationRule swig_types[14]
@@ -6963,7 +6963,7 @@ static PyMethodDef SwigMethods[] = {
 	 { "VisItFieldInfo_lod_get", _wrap_VisItFieldInfo_lod_get, METH_O, "VisItFieldInfo_lod_get(VisItFieldInfo self) -> int"},
 	 { "new_VisItFieldInfo", _wrap_new_VisItFieldInfo, METH_VARARGS, "\n"
 		"VisItFieldInfo()\n"
-		"new_VisItFieldInfo(std::string _association, int _num_components, int _lod=1) -> VisItFieldInfo\n"
+		"new_VisItFieldInfo(std::string association_, int num_components_, int lod_=1) -> VisItFieldInfo\n"
 		""},
 	 { "delete_VisItFieldInfo", _wrap_delete_VisItFieldInfo, METH_O, "delete_VisItFieldInfo(VisItFieldInfo self)"},
 	 { "VisItFieldInfo_swigregister", VisItFieldInfo_swigregister, METH_O, NULL},
@@ -7046,7 +7046,7 @@ static PyMethodDef SwigMethods_proxydocs[] = {
 	 { "VisItFieldInfo_lod_get", _wrap_VisItFieldInfo_lod_get, METH_O, "VisItFieldInfo_lod_get(VisItFieldInfo self) -> int"},
 	 { "new_VisItFieldInfo", _wrap_new_VisItFieldInfo, METH_VARARGS, "\n"
 		"VisItFieldInfo()\n"
-		"new_VisItFieldInfo(std::string _association, int _num_components, int _lod=1) -> VisItFieldInfo\n"
+		"new_VisItFieldInfo(std::string association_, int num_components_, int lod_=1) -> VisItFieldInfo\n"
 		""},
 	 { "delete_VisItFieldInfo", _wrap_delete_VisItFieldInfo, METH_O, "delete_VisItFieldInfo(VisItFieldInfo self)"},
 	 { "VisItFieldInfo_swigregister", VisItFieldInfo_swigregister, METH_O, NULL},
@@ -7097,9 +7097,9 @@ static swig_type_info _swigt__p_QFieldMapIterator = {"_p_QFieldMapIterator", "QF
 static swig_type_info _swigt__p_QFieldMapType = {"_p_QFieldMapType", "QFieldMapType *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_RefCoord = {"_p_RefCoord", "RefCoord *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_char = {"_p_char", "char *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_doublep = {"_p_doublep", "doublep *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_hex_t = {"_p_hex_t", "hex_t *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_intp = {"_p_intp", "intp *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_mfem__ConvectionIntegrator = {"_p_mfem__ConvectionIntegrator", "mfem::ConvectionIntegrator *|mfem::NonconservativeConvectionIntegrator *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_mfem__DGTraceIntegrator = {"_p_mfem__DGTraceIntegrator", "mfem::DGTraceIntegrator *|mfem::ConservativeDGTraceIntegrator *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__DataCollection = {"_p_mfem__DataCollection", "mfem::DataCollection *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__GridFunction = {"_p_mfem__GridFunction", "mfem::GridFunction *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__IntegrationRule = {"_p_mfem__IntegrationRule", "mfem::IntegrationRule *", 0, 0, (void*)0, 0};
@@ -7129,9 +7129,9 @@ static swig_type_info *swig_type_initial[] = {
   &_swigt__p_QFieldMapType,
   &_swigt__p_RefCoord,
   &_swigt__p_char,
-  &_swigt__p_doublep,
   &_swigt__p_hex_t,
-  &_swigt__p_intp,
+  &_swigt__p_mfem__ConvectionIntegrator,
+  &_swigt__p_mfem__DGTraceIntegrator,
   &_swigt__p_mfem__DataCollection,
   &_swigt__p_mfem__GridFunction,
   &_swigt__p_mfem__IntegrationRule,
@@ -7161,9 +7161,9 @@ static swig_cast_info _swigc__p_QFieldMapIterator[] = {  {&_swigt__p_QFieldMapIt
 static swig_cast_info _swigc__p_QFieldMapType[] = {  {&_swigt__p_QFieldMapType, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_RefCoord[] = {  {&_swigt__p_RefCoord, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_doublep[] = {  {&_swigt__p_doublep, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_hex_t[] = {  {&_swigt__p_hex_t, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_intp[] = {  {&_swigt__p_intp, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_mfem__ConvectionIntegrator[] = {  {&_swigt__p_mfem__ConvectionIntegrator, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_mfem__DGTraceIntegrator[] = {  {&_swigt__p_mfem__DGTraceIntegrator, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__DataCollection[] = {  {&_swigt__p_mfem__DataCollection, 0, 0, 0},  {&_swigt__p_mfem__VisItDataCollection, _p_mfem__VisItDataCollectionTo_p_mfem__DataCollection, 0, 0},  {&_swigt__p_mfem__ParaViewDataCollection, _p_mfem__ParaViewDataCollectionTo_p_mfem__DataCollection, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__GridFunction[] = {  {&_swigt__p_mfem__GridFunction, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__IntegrationRule[] = {  {&_swigt__p_mfem__IntegrationRule, 0, 0, 0},{0, 0, 0, 0}};
@@ -7193,9 +7193,9 @@ static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_QFieldMapType,
   _swigc__p_RefCoord,
   _swigc__p_char,
-  _swigc__p_doublep,
   _swigc__p_hex_t,
-  _swigc__p_intp,
+  _swigc__p_mfem__ConvectionIntegrator,
+  _swigc__p_mfem__DGTraceIntegrator,
   _swigc__p_mfem__DataCollection,
   _swigc__p_mfem__GridFunction,
   _swigc__p_mfem__IntegrationRule,

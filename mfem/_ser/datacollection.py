@@ -93,6 +93,7 @@ import mfem._ser.table
 import mfem._ser.hash
 import mfem._ser.bilininteg
 import mfem._ser.linearform
+import mfem._ser.nonlininteg
 import mfem._ser.vertex
 import mfem._ser.vtk
 class DataCollection(object):
@@ -306,7 +307,7 @@ class VisItFieldInfo(object):
     def __init__(self, *args):
         r"""
         __init__(VisItFieldInfo self) -> VisItFieldInfo
-        __init__(VisItFieldInfo self, std::string _association, int _num_components, int _lod=1) -> VisItFieldInfo
+        __init__(VisItFieldInfo self, std::string association_, int num_components_, int lod_=1) -> VisItFieldInfo
         """
         _datacollection.VisItFieldInfo_swiginit(self, _datacollection.new_VisItFieldInfo(*args))
     __swig_destroy__ = _datacollection.delete_VisItFieldInfo

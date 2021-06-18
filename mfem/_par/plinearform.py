@@ -105,6 +105,7 @@ import mfem._par.handle
 import mfem._par.hypre
 import mfem._par.restriction
 import mfem._par.bilininteg
+import mfem._par.nonlininteg
 import mfem._par.pfespace
 import mfem._par.pmesh
 import mfem._par.pncmesh
@@ -146,6 +147,16 @@ class ParLinearForm(mfem._par.linearform.LinearForm):
         """
         return _plinearform.ParLinearForm_MakeRef(self, *args)
     MakeRef = _swig_new_instance_method(_plinearform.ParLinearForm_MakeRef)
+
+    def Assemble(self):
+        r"""Assemble(ParLinearForm self)"""
+        return _plinearform.ParLinearForm_Assemble(self)
+    Assemble = _swig_new_instance_method(_plinearform.ParLinearForm_Assemble)
+
+    def AssembleSharedFaces(self):
+        r"""AssembleSharedFaces(ParLinearForm self)"""
+        return _plinearform.ParLinearForm_AssembleSharedFaces(self)
+    AssembleSharedFaces = _swig_new_instance_method(_plinearform.ParLinearForm_AssembleSharedFaces)
 
     def ParallelAssemble(self, *args):
         r"""

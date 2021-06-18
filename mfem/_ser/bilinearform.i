@@ -2,13 +2,13 @@
 %{
 #include "fem/bilinearform.hpp"
 #include "numpy/arrayobject.h"
-#include "pyoperator.hpp"         
+#include "pyoperator.hpp"
+using namespace mfem;  
 %}
 
 %init %{
 import_array();
 %}
-%include "../common/cpointers.i"
 %include "exception.i"
 
 %import "globals.i"
@@ -28,19 +28,19 @@ import_array();
 %import "gridfunc.i"
 %include "../common/exception_director.i"
 
-//%ignore mfem::MixedBilinearForm::AddBoundaryDomainIntegrator;
 %feature("director") mfem::BilinearForm;
 
  //%include "fem/coefficient.hpp"
 namespace mfem { 
 %pythonprepend BilinearForm::AddDomainIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]
     self._integrators.append(bfi)
     bfi.thisown=0 
     %}
 %pythonprepend BilinearForm::AddBoundaryIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
-    bfi = args[0]	     
+    bfi = args[0]
     self._integrators.append(bfi)
     bfi.thisown=0 
    %} 
@@ -67,16 +67,24 @@ namespace mfem {
    %} 
 %pythonprepend MixedBilinearForm::AddDomainIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]
     self._integrators.append(bfi)
     bfi.thisown=0 
    %}
 %pythonprepend MixedBilinearForm::AddBoundaryIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]
     self._integrators.append(bfi)
     bfi.thisown=0 
    %} 
 %pythonprepend MixedBilinearForm::AddTraceFaceIntegrator %{
     if not hasattr(self, "_integrators"): self._integrators = []
+    self._integrators.append(bfi)
+    bfi.thisown=0 
+   %}
+%pythonprepend MixedBilinearForm::AddBdrTraceFaceIntegrator %{
+    if not hasattr(self, "_integrators"): self._integrators = []
+    bfi = args[0]
     self._integrators.append(bfi)
     bfi.thisown=0 
    %} 
@@ -109,10 +117,12 @@ DEPRECATED_METHOD(mfem::BilinearForm::GetFES())
 %enddef
 
 FORM_SYSTEM_MATRIX_WRAP(mfem::SparseMatrix)
-  
+
+ /*
 #ifdef MFEM_USE_MPI
   FORM_SYSTEM_MATRIX_WRAP(mfem::HypreParMatrix)
 #endif
+ */
   
 #ifdef MFEM_USE_PETSC
   FORM_SYSTEM_MATRIX_WRAP(mfem::PetscParMatrix)

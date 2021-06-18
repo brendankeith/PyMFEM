@@ -117,6 +117,21 @@ to find more details of the MFEM library.
           Note: the argument is first tested if it can be converted using
 	        np.array(x,  dtype=float)
 
+       (EXPERIMENTAL)
+       Using Numba JIT functions for FunctionCoefficients is supported.
+       For example, to use Numba compiled function, one can use
+       GenerateCoefficient mehtod in NumberFunction class as follows.
+
+       >>> from numba import cfunc, carray
+       >>> from mfem.coefficient import scalar_sig
+       >>> sdim = mesh.SpaceDimension()
+       >>> vdim = mesh.Dimension()
+       >>> @cfunc(scalar_sig)
+           def s_func(ptx, sdim):
+           ...    return 2*ptx[0]
+       >>> c = NumbaFunction(s_func, sdim).GenerateCoefficient()
+
+
   4-3) mfem::GridFunction
        GetNodalValues(i) will perform GetNodalValue(Vector(), i) and
        return NumPy array of Vector()
@@ -295,7 +310,11 @@ to find more details of the MFEM library.
 
               # Assigning (copy) from NumPy array
 	      m = DenseMatrix(3,3)
-	      m.Assign(np.arange(9.).reshape(3,3))
+	      m.Assign(np.arange(9.).reshape(3,3))  # <-- In this case,
+	                                            #     wrapper automatically tranpose
+	                                            #     input matrix so that data is
+						    #     column order. The same is done
+						    #     in GetDataArray()
 	      
               x = DenseTensor(2, 3, 5)
 	      x.Assign(1) # set all 1
@@ -387,17 +406,39 @@ to find more details of the MFEM library.
 	 precision. Also, note that sock << flush in c++ should be rephrased
 	 sock.flush()
 	   
-   4-12) std::ostream&
+   4-12) std::ostream& and std::istream&
 
          methods which takes std::ostream& are wrapped so that it accept
-	 either empty argument (stdout) or filename.
+	 either
+	   1) filename 
+	   2) compressed filename (when the filename ends with .gz)
+	   3) mfem.STDOUT
+	   4) StringIO
+
+         (example)
+            mesh.PrintVTK("mesh.vtk", 1)
+     	    mesh.Print(mfem.STDOUT)
+	    gf.SaveVTK("gf.vtk", "data", 1)
+	    gf.Save("data.gf")
+
+         Some methos are wrapped so that it runs without argument. In this
+	 case, data is passed to STDOUT.	 
 	 Not all methods are wrapped yet. Look for OSTREAM_ADD_DEFAULT_FILE
 	 (or OSTREAM_ADD_DEFAULT_STDOUT_FILE) macros in the SWIG interface
 	 file to find which method is wrapped.
 
          (example)
-	    sparsmat.PrintInfo()
+	    SparseMat::PrintInfo
+	    STable3D::Print
+
+         std::istream & is also wrapped in a similar way
+	   1) filename 
+	   2) compressed filename (when the filename ends with .gz)
+	   3) StringIO
+
+         See test/test_gz.py to see an example
        
+
    4-13) mfem::table
            GetRowList returns a version of GetRow which returns Python
 	   list instead of int pointer.
@@ -471,7 +512,7 @@ to find more details of the MFEM library.
             strumpack.SetOperator(Arow)
             strumpack.SetFromCommandLine()
             strumpack.Mult(B, X);
-	     
+
 -- Known issues --
 
   PyMFEM is an on-going effort. Not all MFEM functionality is properly
