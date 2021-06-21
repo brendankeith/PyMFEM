@@ -13,25 +13,30 @@ import numpy as np
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
-from prob_envs.StationaryProblem import DeRefStationaryProblem
+from prob_envs.StationaryProblem import DeRefStationaryProblem, DeRefStationaryProblemBob
 
-train = True
+train = False
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
-    # 'mesh_name'         : 'l-shape.mesh',
-    'mesh_name'         : 'inline-quad.mesh',
+    'mesh_name'         : 'l-shape.mesh',
+    # 'mesh_name'         : 'inline-quad.mesh',
     'num_unif_ref'      : 3,
     'num_random_ref'    : 0,
     'order'             : 2,
     # 'optimization_type' : 'error_threshold',
     'optimization_type' : 'dof_threshold',
-    'problem_type' : 'wavefront',
-    # 'problem_type' : 'laplace',
+    # 'problem_type' : 'wavefront',
+    'problem_type' : 'laplace',
 }
 
-# total_episodes = 10000
-# batch_size = 64
-# checkpoint_period = 200
+# env = DeRefStationaryProblem(**prob_config)
+# env.reset()
+# env.step(np.array([0.5,0.5]))
+# env.step(np.array([1.0,0.5]))
+
+total_episodes = 10000
+batch_size = 64
+checkpoint_period = 200
 
 # # short run - for debugging
 total_episodes = 100
@@ -73,7 +78,9 @@ if train:
             print(checkpoint_path)
 else:
     # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-17_11-52-02npl_aius/checkpoint_000153/checkpoint-153'
-    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-17_12-33-12wojlg07o/checkpoint_000153/checkpoint-153'
+    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-17_12-33-12wojlg07o/checkpoint_000153/checkpoint-153'
+    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-21_13-52-2843jvi5fv/checkpoint_000153/checkpoint-153'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-21_14-32-16_bpybyev/checkpoint_000153/checkpoint-153'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -137,13 +144,11 @@ ax[2].set_xlabel("Iteration")
 ax[2].legend()
 
 costs = []
-rlcosts = []
 actions = []
 nth = 11
-for i in range(1, nth):
-    action = np.array([i/(nth-1),0])
+for theta in np.linspace(0,0.9999,num=11):
+    action = np.array([theta,0])
     actions.append(action[0].item())
-    rlcosts.append(rlcost)
     env.reset()
     done = False
     episode_cost = 0
@@ -163,8 +168,32 @@ for i in range(1, nth):
 env.render()
 
 ax[3].plot(actions,costs,'-or',lw=1.3)
-ax[3].plot(actions,rlcosts,'-b',lw=1.3)
+ax[3].plot([0,1],[rlcost,rlcost],'-b',lw=1.3)
 # ax.semilogy(cost,'r',lw=1.3)
 ax[3].set_ylabel("cost")
 ax[3].set_xlabel("Constant Actions (theta)")
+
+
+#############
+## Bob's test
+#############
+
+env_Bob = DeRefStationaryProblemBob(**prob_config)
+env_Bob.reset()
+null_action = np.zeros((2,))
+episode_cost = 0
+while True:
+    obs, reward, done, info = env_Bob.step(null_action)
+    if done:
+        break
+    episode_cost -= reward
+    bobcost = episode_cost
+    print("step = ", env_Bob.k)
+    print("Num. Elems. = ", env_Bob.mesh.GetNE())
+    print("Num dofs", info['num_dofs'])
+    print("episode cost = ", episode_cost)
+    print("Error estimate", info['global_error'])
+
+ax[3].plot([0,1],[bobcost,bobcost],'--g',lw=1.3)
+
 plt.show()

@@ -73,7 +73,7 @@ class StationaryProblem(gym.Env):
             exit()
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-5)
-        self.dof_threshold = kwargs.get('dof_threshold',5e4)
+        self.dof_threshold = kwargs.get('dof_threshold',1e4)
         self.step_threshold = kwargs.get('step_threshold',10)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
@@ -277,7 +277,7 @@ class DeRefStationaryProblemBob(DeRefStationaryProblem):
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.factor = 5e-4
+        self.factor = 5e-5
 
     def UpdateMesh(self, action):
         emax = np.max(self.errors)

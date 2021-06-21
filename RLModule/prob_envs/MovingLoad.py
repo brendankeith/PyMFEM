@@ -87,11 +87,11 @@ class MovingLoadProblem(DeRefStationaryProblem):
             else:
                 # beta = max(1/self.k,0.1)
                 # cost = beta*(alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)
-                # cost = (alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)/self.k
-                # self.rolling_average *= (self.k-1)/self.k
-                # self.rolling_average += (alpha*log_num_dofs/d + (1-alpha)*log_global_error)/self.k
-                cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average
-                self.rolling_average = alpha*log_num_dofs/d + (1-alpha)*log_global_error
+                cost = (alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)/self.k
+                self.rolling_average *= (self.k-1)/self.k
+                self.rolling_average += (alpha*log_num_dofs/d + (1-alpha)*log_global_error)/self.k
+                # cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average
+                # self.rolling_average = alpha*log_num_dofs/d + (1-alpha)*log_global_error
             if num_dofs > self.dof_threshold:
                 cost += 10.0/self.k
                 done = True

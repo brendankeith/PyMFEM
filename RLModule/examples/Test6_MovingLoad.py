@@ -40,8 +40,8 @@ prob_config = {
     'mesh_name'         : 'inline-quad.mesh',
     'num_unif_ref'      : 3,
     'order'             : 1,
-    'dof_threshold'     : 5e4,
-    'convex_coeff'      : 0.20, # E[ alpha*log_num_dofs/d + (1-alpha)*log_global_error ]
+    'dof_threshold'     : 1e4,
+    'convex_coeff'      : 0.50, # E[ alpha*log_num_dofs/d + (1-alpha)*log_global_error ]
 }
 
 # env = MovingLoadProblem(**prob_config)
@@ -79,9 +79,6 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 policy = agent.get_policy()
 model = policy.model
 
-cor = []
-ref = []
-
 episode = 0
 checkpoint_episode = 0
 for n in range(nbatches):
@@ -102,6 +99,7 @@ csv_path = root_path + '/progress.csv'
 df = pd.read_csv(csv_path)
 cost = -df.episode_reward_mean.to_numpy()
 
+## plots
 fig, ax = plt.subplots(3)
 ax[0].plot(cost,'r',lw=1.3)
 ax[0].set_ylabel("cost")
@@ -109,7 +107,6 @@ ax[0].set_xlabel("iteration")
 
 agent.restore(checkpoint_path)
 
-## print
 wait = input("Press any key to continue.")
 time.sleep(0.5)
 prob_config['num_random_ref'] = 0
@@ -118,7 +115,6 @@ env = MovingLoadProblem(**prob_config)
 done = False
 obs = env.reset()
 print("Num. Elems. = ", env.mesh.GetNE())
-# env.render()
 
 ref_thetas = []
 deref_thetas = []
@@ -155,33 +151,4 @@ ax[2].plot(deref_thetas*max_local_errors,'b',lw=1.3,label='deref. thresh.')
 ax[2].set_ylabel("Threshold")
 ax[2].set_xlabel("Iteration")
 ax[2].legend()
-
-# costs = []
-# rlcosts = []
-# actions = []
-# nth = 11
-# for i in range(1, nth):
-#     action = np.array([i/(nth-1),0])
-#     actions.append(action[0].item())
-#     rlcosts.append(rlcost)
-#     env.reset()
-#     done = False
-#     episode_cost = 0
-#     while not done:
-#         _, reward, done, info = env.step(action)
-#         episode_cost -= reward 
-#         print("step = ", env.k)
-#         print("refine action   = ", action[0].item())
-#         print("derefine action = ", action[1].item())
-#         print("Num. Elems. = ", env.mesh.GetNE())
-#         print("episode cost = ", episode_cost)
-#     env.RenderMesh()    
-#     costs.append(episode_cost)
-
-    
-# ax[1].plot(actions,costs,'-or',lw=1.3)
-# ax[1].plot(actions,rlcosts,'-b',lw=1.3)
-# # ax.semilogy(cost,'r',lw=1.3)
-# ax[1].set_ylabel("cost")
-# ax[1].set_xlabel("Constant Actions (theta)")
 plt.show()
