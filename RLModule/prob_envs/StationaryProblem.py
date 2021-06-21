@@ -33,10 +33,10 @@ class BCCoefficient(mfem.PyCoefficient):
         # r0 = 0.7
 
         # # steep
-        # alpha = 1000.0
-        # xc = -0.05
-        # yc = -0.05
-        # r0 = 0.7
+        alpha = 1000.0
+        xc = -0.05
+        yc = -0.05
+        r0 = 0.7
 
         # asymmetric
         # alpha = 1000.0
@@ -46,10 +46,11 @@ class BCCoefficient(mfem.PyCoefficient):
         # r = sqrt((x[0] - xc)**2 + (x[1] - yc)**2)
 
         # well
-        alpha = 50.0
-        xc = 0.5
-        yc = 0.5
-        r0 = 0.25
+        # alpha = 50.0
+        # xc = 0.5
+        # yc = 0.5
+        # r0 = 0.25
+        
         r = sqrt((x[0] - xc)**2 + (x[1] - yc)**2)
         return atan(alpha * (r - r0))
 

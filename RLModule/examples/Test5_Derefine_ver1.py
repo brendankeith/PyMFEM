@@ -29,14 +29,14 @@ prob_config = {
     # 'problem_type' : 'laplace',
 }
 
-total_episodes = 10000
-batch_size = 64
-checkpoint_period = 200
+# total_episodes = 10000
+# batch_size = 64
+# checkpoint_period = 200
 
 # # short run - for debugging
-# total_episodes = 100
-# batch_size = 10
-# checkpoint_period = 20
+total_episodes = 100
+batch_size = 10
+checkpoint_period = 20
 
 nbatches = int(total_episodes/batch_size)
 
@@ -150,6 +150,8 @@ for i in range(1, nth):
     while not done:
         _, reward, done, info = env.step(action)
         episode_cost -= reward 
+        if (int(env.k) == 1):
+            print("")
         print("step = ", env.k)
         print("refine action   = ", action[0].item())
         print("derefine action = ", action[1].item())
