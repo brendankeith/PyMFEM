@@ -8,7 +8,7 @@ import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
 
-
+import ctypes
 
 # class u_exact(mfem.PyCoefficient):
 #     def __init__(self):
@@ -71,8 +71,8 @@ class StationaryProblem(gym.Env):
             print("Problem type not recognized.  Exiting.")
             exit()
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
-        self.error_threshold = kwargs.get('error_threshold',5e-4)
-        self.dof_threshold = kwargs.get('dof_threshold',1e4)
+        self.error_threshold = kwargs.get('error_threshold',1e-5)
+        self.dof_threshold = kwargs.get('dof_threshold',5e4)
         self.step_threshold = kwargs.get('step_threshold',10)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
@@ -206,11 +206,8 @@ class StationaryProblem(gym.Env):
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
 
     def UpdateMesh(self, action):
+        action = np.clip(action, 0.0, 1.0)
         theta = action.item() # refinement threshold
-        if theta < 0. :
-          theta = 0.
-        if theta > 0.999 :
-          theta = 0.999 
         self.Refine(theta)
 
     def Refine(self, theta):
@@ -231,34 +228,41 @@ class DeRefStationaryProblem(StationaryProblem):
         self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
 
     def UpdateMesh(self, action):
+        action = np.clip(action, 0.0, 1.0)
         theta1 = action[0].item() # refine threshold
-        if theta1 < 0. :
-          theta1 = 0.
-        if theta1 > 0.999 :
-          theta1 = 0.999 
         theta2 = action[1].item() # derefine threshold
         theta2 *= theta1 # enforces deref < ref threshold 
         self.Refine(theta1)
-        self.Derefine(theta2)
+        self.Derefine(theta1, theta2)
     
-    def Derefine(self, theta):
-        threshold = theta * np.max(self.errors)
-        rtransforms = self.mesh.GetRefinementTransforms()
-        coarse_to_fine = mfem.Table()
-        coarse_to_ref_type = mfem.intArray()
-        ref_type_to_matrix = mfem.Table()
-        ref_type_to_geom = mfem.GeometryTypeArray()
-        rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
-        new_errors = mfem.doubleArray(coarse_to_fine.Width())
-        tmp = mfem.intArray(1)
-        for i in range(coarse_to_fine.Width()):
-            new_errors[i] = mfem.infinity()
-        for i in range(coarse_to_fine.Size()):
-            if coarse_to_fine.RowSize(i) == 1:
-                tmp_data = coarse_to_fine.GetRow(i)
-                tmp.Assign(tmp_data)
-                index = tmp[0]
-                new_errors[index] = self.errors[i]
+    def Derefine(self, theta1, theta2):
+        threshold = theta2 * np.max(self.errors)
+        # if self.mesh.GetLastOperation() == self.mesh.REFINE:
+        # if theta1 == 1.0:
+            # new_errors = self.errors
+        # else:
+        if self.mesh.GetLastOperation() == self.mesh.REFINE:
+            rtransforms = self.mesh.GetRefinementTransforms()
+            coarse_to_fine = mfem.Table()
+            coarse_to_ref_type = mfem.intArray()
+            ref_type_to_matrix = mfem.Table()
+            ref_type_to_geom = mfem.GeometryTypeArray()
+            rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
+            new_errors = mfem.doubleArray(coarse_to_fine.Width())
+            tmp = mfem.intArray(1)
+            for i in range(coarse_to_fine.Width()):
+                new_errors[i] = mfem.infinity()
+            for i in range(coarse_to_fine.Size()):
+                if coarse_to_fine.RowSize(i) == 1:
+                    tmp_data = coarse_to_fine.GetRow(i)
+                    tmp.Assign(tmp_data)
+                    index = tmp[0]
+                    new_errors[index] = self.errors[i]
+        else:
+            nel = len(self.errors)
+            new_errors = mfem.doubleArray(nel)
+            for i in range(nel):
+                new_errors[i] = self.errors[i]
         self.mesh.DerefineByError(new_errors,threshold)
         
         # self.refiner.Reset()
@@ -267,3 +271,14 @@ class DeRefStationaryProblem(StationaryProblem):
         # self.fespace.UpdatesFinished()
         self.a.Update()
         self.b.Update()
+
+class DeRefStationaryProblemBob(DeRefStationaryProblem):
+
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self.factor = 5e-4
+
+    def UpdateMesh(self, action):
+        emax = np.max(self.errors)
+        theta1 = self.factor / max(emax, self.factor)
+        self.Refine(theta1)
