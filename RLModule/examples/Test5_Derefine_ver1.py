@@ -15,33 +15,39 @@ import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 from prob_envs.StationaryProblem import DeRefStationaryProblem, DeRefStationaryProblemBob
 
-train = False
+train = True
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
-    'mesh_name'         : 'l-shape.mesh',
-    # 'mesh_name'         : 'inline-quad.mesh',
-    'num_unif_ref'      : 3,
+    # 'mesh_name'         : 'l-shape.mesh',
+    'mesh_name'         : 'inline-quad.mesh',
+    'num_unif_ref'      : 2,
     'num_random_ref'    : 0,
     'order'             : 2,
     # 'optimization_type' : 'error_threshold',
     'optimization_type' : 'dof_threshold',
-    # 'problem_type' : 'wavefront',
-    'problem_type' : 'laplace',
+    'problem_type' : 'wavefront',
+    # 'problem_type' : 'laplace',
 }
 
 # env = DeRefStationaryProblem(**prob_config)
 # env.reset()
 # env.step(np.array([0.5,0.5]))
-# env.step(np.array([1.0,0.5]))
+# env.step(np.array([0.5,0.0]))
+# env.step(np.array([0.5,0.0]))
+# env.step(np.array([0.5,0.0]))
+# env.step(np.array([0.5,0.0]))
+# env.step(np.array([0.5,0.0]))
+# env.step(np.array([0.5,0.0]))
+# env.render()
 
 total_episodes = 10000
 batch_size = 64
 checkpoint_period = 200
 
 # # short run - for debugging
-total_episodes = 100
-batch_size = 10
-checkpoint_period = 20
+# total_episodes = 100
+# batch_size = 10
+# checkpoint_period = 20
 
 nbatches = int(total_episodes/batch_size)
 
@@ -178,22 +184,22 @@ ax[3].set_xlabel("Constant Actions (theta)")
 ## Bob's test
 #############
 
-env_Bob = DeRefStationaryProblemBob(**prob_config)
-env_Bob.reset()
-null_action = np.zeros((2,))
-episode_cost = 0
-while True:
-    obs, reward, done, info = env_Bob.step(null_action)
-    if done:
-        break
-    episode_cost -= reward
-    bobcost = episode_cost
-    print("step = ", env_Bob.k)
-    print("Num. Elems. = ", env_Bob.mesh.GetNE())
-    print("Num dofs", info['num_dofs'])
-    print("episode cost = ", episode_cost)
-    print("Error estimate", info['global_error'])
+# env_Bob = DeRefStationaryProblemBob(**prob_config)
+# env_Bob.reset()
+# null_action = np.zeros((2,))
+# episode_cost = 0
+# while True:
+#     obs, reward, done, info = env_Bob.step(null_action)
+#     if done:
+#         break
+#     episode_cost -= reward
+#     bobcost = episode_cost
+#     print("step = ", env_Bob.k)
+#     print("Num. Elems. = ", env_Bob.mesh.GetNE())
+#     print("Num dofs", info['num_dofs'])
+#     print("episode cost = ", episode_cost)
+#     print("Error estimate", info['global_error'])
 
-ax[3].plot([0,1],[bobcost,bobcost],'--g',lw=1.3)
+# ax[3].plot([0,1],[bobcost,bobcost],'--g',lw=1.3)
 
 plt.show()

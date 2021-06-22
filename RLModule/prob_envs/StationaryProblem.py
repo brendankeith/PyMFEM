@@ -2,57 +2,11 @@ import os
 from os.path import expanduser, join
 import gym
 from gym import spaces
-from math import atan, sqrt, cos, sin
 import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
-
-import ctypes
-
-# class u_exact(mfem.PyCoefficient):
-#     def __init__(self):
-#         mfem.PyCoefficient.__init__(self)
-#     def EvalValue(self, x):
-#         # from test_functions import michalewicz as tf
-#         return x
-
-
-class BCCoefficient(mfem.PyCoefficient):
-    def __init__(self):
-        mfem.PyCoefficient.__init__(self)
-    def EvalValue(self, x):
-        # Wavefront parameterization from William F. Mitchell
-        # "A collection of 2D elliptic problems for testing adaptive grid refinement algorithms 
-        # Applied Mathematics and Computation 2013
-
-        # # mild
-        # alpha = 20.0
-        # xc = -0.05
-        # yc = -0.05
-        # r0 = 0.7
-
-        # # steep
-        alpha = 1000.0
-        xc = -0.05
-        yc = -0.05
-        r0 = 0.7
-
-        # asymmetric
-        # alpha = 1000.0
-        # xc = 1.5
-        # yc = 0.25
-        # r0 = 0.92
-        # r = sqrt((x[0] - xc)**2 + (x[1] - yc)**2)
-
-        # well
-        # alpha = 50.0
-        # xc = 0.5
-        # yc = 0.5
-        # r0 = 0.25
-        
-        r = sqrt((x[0] - xc)**2 + (x[1] - yc)**2)
-        return atan(alpha * (r - r0))
+from utils.solution_wavefront import *
 
 class StationaryProblem(gym.Env):
 
@@ -65,8 +19,8 @@ class StationaryProblem(gym.Env):
             self.RHS = mfem.ConstantCoefficient(1.0)
             self.coeff = mfem.ConstantCoefficient(1.0)
         elif (self.problem_type == 'wavefront'):
-            self.BC = BCCoefficient()
-            self.RHS = mfem.ConstantCoefficient(0.0)
+            self.BC = WavefrontSolutionCoefficient()
+            self.RHS = WavefrontRHSCoefficient()
             self.coeff = mfem.ConstantCoefficient(1.0)
         else:
             print("Problem type not recognized.  Exiting.")
