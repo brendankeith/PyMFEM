@@ -31,7 +31,7 @@ prob_config = {
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
     'order'             : 2,
-    'optimization_type' : 'error_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    'optimization_type' : 'step_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
     # 'random_mesh'       : True
 }
 
@@ -89,7 +89,7 @@ ax[0].plot(cost,'r',lw=1.3)
 # ax.semilogy(cost,'r',lw=1.3)
 ax[0].set_ylabel("cost")
 ax[0].set_xlabel("iteration")
-# plt.show()
+plt.show()
 
 agent.restore(checkpoint_path)
 
@@ -113,32 +113,34 @@ while not done:
     episode_cost -= reward 
     rlcost = episode_cost
     print("step = ", env.k)
-    print("action = ", action.item())
+    print("action = ", action)
     print("Num. Elems. = ", env.mesh.GetNE())
     print("episode cost = ", episode_cost)
     time.sleep(0.05)
     env.RenderMesh()
 
-
+"""
 costs = []
 rlcosts = []
 actions = []
 nth = 11
 for i in range(1, nth):
-    action = np.array([i/(nth-1)])
-    actions.append(action.item())
-    rlcosts.append(rlcost)
-    env.reset()
-    done = False
-    episode_cost = 0
-    while not done:
-        _, reward, done, info = env.step(action)
-        episode_cost -= reward 
-        print("step = ", env.k)
-        print("action = ", action.item())
-        print("Num. Elems. = ", env.mesh.GetNE())
-        print("episode cost = ", episode_cost)
-    costs.append(episode_cost)
+    for j in range(0, 2):
+        #action = np.array([i/(nth-1)])
+        action = {'order' : j, 'space' : i / (nth-1)}
+        actions.append(action.item())
+        rlcosts.append(rlcost)
+        env.reset()
+        done = False
+        episode_cost = 0
+        while not done:
+            _, reward, done, info = env.step(action)
+            episode_cost -= reward 
+            print("step = ", env.k)
+            #print("action = ", action.item())
+            print("Num. Elems. = ", env.mesh.GetNE())
+            print("episode cost = ", episode_cost)
+        costs.append(episode_cost)
 
 ax[1].plot(actions,costs,'-or',lw=1.3)
 ax[1].plot(actions,rlcosts,'-b',lw=1.3)
@@ -147,3 +149,4 @@ ax[1].set_ylabel("cost")
 ax[1].set_xlabel("Constant Actions (theta)")
 
 plt.show()
+"""

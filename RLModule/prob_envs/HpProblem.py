@@ -1,3 +1,4 @@
+from mfem._ser.gridfunc import ProlongToMaxOrder
 import os
 from os.path import expanduser, join
 import gym
@@ -30,9 +31,9 @@ class HpProblem(gym.Env):
         self.dim = mesh.Dimension()
         self.initial_mesh = mesh
         self.order = order
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
-#        self.action_space = spaces.Dict({"space" : spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32), 
-#                                         "order" : spaces.Discrete(2)})
+#        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
+        self.action_space = spaces.Dict({"space" : spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32), 
+                                         "order" : spaces.Discrete(2)})
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
     
     def reset(self):
@@ -145,17 +146,20 @@ class HpProblem(gym.Env):
         sol_sock.precision(8)
         zerogf = mfem.GridFunction(self.fespace)
         zerogf.Assign(0.0)
-        sol_sock.send_solution(self.mesh, zerogf)
+        prolonged = ProlongToMaxOrder(self.x)
+        sol_sock.send_solution(self.mesh, prolonged)
         title = "step " + str(self.k)
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
 
     def UpdateMesh(self, action):
-        theta = action.item() # refinement threshold
+        rho = action['order'] # determine if we want to refine the order this time
+        #theta = action.item() # refinement threshold
+        theta = action['space'].item() #refinement threshold
         if theta < 0. :
           theta = 0.
         if theta > 0.999 :
           theta = 0.999 
-        self.Prefine(theta)
+        self.Prefine(theta, rho)
         self.Refine(theta)
 
     def Refine(self, theta):
@@ -170,12 +174,13 @@ class HpProblem(gym.Env):
         self.a.Update()
         self.b.Update()
 
-    def Prefine(self, theta):
+    def Prefine(self, theta, rho):
         threshold = theta * np.max(self.errors)
         for i in range(self.mesh.GetNE()):
-            if theta * threshold >= self.errors[i]:
-                current_order = self.fespace.GetElementOrder(i)
-                self.fespace.SetElementOrder(i, current_order + 1)
+            if threshold >= self.errors[i]:
+                if rho == 0:
+                    current_order = self.fespace.GetElementOrder(i)
+                    self.fespace.SetElementOrder(i, current_order + 1)
         self.fespace.Update(False)
         self.x.Update()
         self.x.Assign(0.0)
@@ -185,47 +190,3 @@ class HpProblem(gym.Env):
         self.b.Update()
     
 
-
-"""
-class PrefhpProblem(hpProblem):
-
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
-.
-    def UpdateMesh(self, action):
-        theta1 = action[0].item() # refine threshold
-        if theta1 < 0. :
-          theta1 = 0.
-        if theta1 > 0.999 :
-          theta1 = 0.999 
-        theta2 = action[1].item() # derefine threshold
-        theta2 *= theta1 # enforces deref < ref threshold
-        self.PRefine(theta1) 
-        self.Refine(theta1)
-"""        
-"""
-        rtransforms = self.mesh.GetRefinementTransforms()
-        coarse_to_fine = mfem.Table()
-        coarse_to_ref_type = mfem.intArray()
-        ref_type_to_matrix = mfem.Table()
-        ref_type_to_geom = mfem.GeometryTypeArray()
-        rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
-        new_errors = mfem.doubleArray(coarse_to_fine.Width())
-        tmp = mfem.intArray(1)
-        for i in range(coarse_to_fine.Width()):
-            new_errors[i] = mfem.infinity()
-        for i in range(coarse_to_fine.Size()):
-            if coarse_to_fine.RowSize(i) == 1:
-                tmp_data = coarse_to_fine.GetRow(i)
-                tmp.Assign(tmp_data)
-                index = tmp[0]
-                new_errors[index] = self.errors[i]
-        self.mesh.DerefineByError(new_errors,threshold)
-        
-        # self.refiner.Reset()
-        self.fespace.Update()
-        self.x.Update()
-        # self.fespace.UpdatesFinished()
-        self.a.Update()
-        self.b.Update() """
