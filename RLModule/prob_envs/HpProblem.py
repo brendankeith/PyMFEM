@@ -1,4 +1,4 @@
-from mfem._ser.gridfunc import ProlongToMaxOrder
+from mfem._ser.gridfunc import GridFunction, ProlongToMaxOrder
 import os
 from os.path import expanduser, join
 import gym
@@ -31,7 +31,7 @@ class HpProblem(gym.Env):
         self.dim = mesh.Dimension()
         self.initial_mesh = mesh
         self.order = order
-#        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
+#        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
         self.action_space = spaces.Dict({"space" : spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32), 
                                          "order" : spaces.Discrete(2)})
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
@@ -155,11 +155,14 @@ class HpProblem(gym.Env):
         rho = action['order'] # determine if we want to refine the order this time
         #theta = action.item() # refinement threshold
         theta = action['space'].item() #refinement threshold
+        #theta = action[0].item() #refinement threshold for h
+        #rho = action[1].item() 
         if theta < 0. :
           theta = 0.
         if theta > 0.999 :
           theta = 0.999 
-        self.Prefine(theta, rho)
+        if rho == 1:
+            self.Prefine(theta)
         self.Refine(theta)
 
     def Refine(self, theta):
@@ -174,13 +177,12 @@ class HpProblem(gym.Env):
         self.a.Update()
         self.b.Update()
 
-    def Prefine(self, theta, rho):
+    def Prefine(self, theta):
         threshold = theta * np.max(self.errors)
         for i in range(self.mesh.GetNE()):
             if threshold >= self.errors[i]:
-                if rho == 0:
-                    current_order = self.fespace.GetElementOrder(i)
-                    self.fespace.SetElementOrder(i, current_order + 1)
+                current_order = self.fespace.GetElementOrder(i)
+                self.fespace.SetElementOrder(i, current_order + 1)
         self.fespace.Update(False)
         self.x.Update()
         self.x.Assign(0.0)
@@ -188,5 +190,38 @@ class HpProblem(gym.Env):
         # self.fespace.UpdatesFinished()
         self.a.Update()
         self.b.Update()
-    
 
+    def RenderHPmesh(self):
+        ordersfec = mfem.L2_FECollection(0, self.dim)
+        ordersfes = mfem.FiniteElementSpace(self.mesh, ordersfec)
+        orders = mfem.GridFunction(ordersfes)
+        for i in range(0, self.mesh.GetNE()):
+            elem_dofs = 0
+            elem_dofs = ordersfes.GetElementDofs(i)
+            orders[elem_dofs[0]] = self.fespace.GetElementOrder(i)
+        sol_sock = mfem.socketstream("localhost", 19916)
+        sol_sock.precision(8)
+        sol_sock.send_solution(self.mesh, orders)
+        title = "step " + str(self.k)
+        sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
+        print(orders)
+
+
+
+    
+"""
+L2_FECollection ordersfec(0,dim);
+FiniteElementSpace ordersfes(mesh,&ordersfec);
+GridFunction orders(&ordersfes);
+for (int i = 0;i<mesh->GetNE(); i++)
+{
+  Array<int> elem_dofs;
+  ordersfes.GetElementDofs(i,elem_dofs);
+  MFEM_VERIFY(elem_dofs.Size() == 1,"Wrong elem_dofs size");
+  orders[elem_dofs[0]] = fespace->GetElementOrder(i);
+}
+socketstream orders_sock(vishost, visport);
+orders_sock.precision(8);
+orders_sock << "solution\n" << *mesh << orders << flush;
+sol_sock.send_solution(self.mesh, prolonged)
+"""
