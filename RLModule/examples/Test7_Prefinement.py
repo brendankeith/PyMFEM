@@ -31,11 +31,13 @@ prob_config = {
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
     'order'             : 2,
-    'optimization_type' : 'step_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    'optimization_type' : 'error_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
     # 'random_mesh'       : True
+    #'error_threshold' : 1e-4,  #default is 1e-3
+    #'dof_threshold' : 3e3 #default is 1e4
 }
 
-total_episodes = 4000
+total_episodes = 8000
 batch_size = 16
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 200
@@ -116,8 +118,11 @@ while not done:
     print("action = ", action)
     print("Num. Elems. = ", env.mesh.GetNE())
     print("episode cost = ", episode_cost)
+    print("Num of dofs = ", env.sum_of_dofs)
+    print("Global Error = ", env.global_error)
     time.sleep(0.05)
-    env.RenderMesh()
+    #env.RenderMesh()
+    env.RenderHPmesh()
 
 """
 costs = []

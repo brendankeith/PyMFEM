@@ -1,3 +1,4 @@
+from threading import current_thread
 from mfem._ser.gridfunc import GridFunction, ProlongToMaxOrder
 import os
 from os.path import expanduser, join
@@ -7,6 +8,7 @@ import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
+import math
 
 class HpProblem(gym.Env):
 
@@ -22,7 +24,8 @@ class HpProblem(gym.Env):
         self.step_threshold = kwargs.get('step_threshold',10)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
-        order = kwargs.get('order',1)    
+        order = kwargs.get('order',1)
+        self.average_order = order
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
         mesh.EnsureNCMesh()
@@ -34,7 +37,8 @@ class HpProblem(gym.Env):
 #        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
         self.action_space = spaces.Dict({"space" : spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32), 
                                          "order" : spaces.Discrete(2)})
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
+        self.THETA = 0.7
     
     def reset(self):
         self.k = 0
@@ -56,12 +60,16 @@ class HpProblem(gym.Env):
         if self.optimization_type == 'error_threshold':
             global_error = GlobalError(self.errors)
             num_dofs = self.fespace.GetTrueVSize()
-            cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
+            cost = np.log(1.0 + num_dofs/self.sum_of_dofs) #- self.ComputeAverageOrder()
             self.sum_of_dofs += num_dofs
-            if global_error < self.error_threshold:
+            if self.global_error < self.error_threshold:
                 done = True
             else:
                 done = False
+            if self.sum_of_dofs > self.dof_threshold or self.k > 50:
+                cost = 10.0
+                done = True
+                #print("Optimal Policy reached termination condition.")
         elif self.optimization_type == 'dof_threshold':
             self.sum_of_dofs += self.fespace.GetTrueVSize()
             if self.sum_of_dofs > self.dof_threshold:
@@ -69,7 +77,7 @@ class HpProblem(gym.Env):
                 done = True
             else:
                 global_error = GlobalError(self.errors)
-                cost = np.log(global_error/self.global_error)
+                cost = np.log(global_error/self.global_error) #- self.ComputeAverageOrder()
                 self.global_error = global_error
                 done = False
         else:
@@ -88,6 +96,8 @@ class HpProblem(gym.Env):
             else:
                 done = False
         info = {}
+
+        #print("Optimal Policy reached termination condition.")
         return obs, -cost, done, info
     
     def render(self):
@@ -118,9 +128,11 @@ class HpProblem(gym.Env):
 
         self.refiner = mfem.ThresholdRefiner(self.estimator)
 
+
     def Errors2Observation(self, errors):
         stats = Statistics(errors)
-        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        average_order = self.ComputeAverageOrder()
+        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis, average_order]
         return np.array(obs)
 
     def AssembleAndSolve(self):
@@ -153,16 +165,21 @@ class HpProblem(gym.Env):
 
     def UpdateMesh(self, action):
         rho = action['order'] # determine if we want to refine the order this time
-        #theta = action.item() # refinement threshold
         theta = action['space'].item() #refinement threshold
         #theta = action[0].item() #refinement threshold for h
         #rho = action[1].item() 
+        #theta = self.THETA
         if theta < 0. :
           theta = 0.
         if theta > 0.999 :
           theta = 0.999 
+        #if rho < 0. :
+        #  rho = 0.
+        #if rho > 0.999 :
+        #  rho = 0.999 
         if rho == 1:
             self.Prefine(theta)
+        #self.Prefine(theta, rho)
         self.Refine(theta)
 
     def Refine(self, theta):
@@ -178,11 +195,21 @@ class HpProblem(gym.Env):
         self.b.Update()
 
     def Prefine(self, theta):
+        #mark_to_p_refine = []
         threshold = theta * np.max(self.errors)
         for i in range(self.mesh.GetNE()):
             if threshold >= self.errors[i]:
+                #mark_to_p_refine.append((i, self.errors[i]))
                 current_order = self.fespace.GetElementOrder(i)
                 self.fespace.SetElementOrder(i, current_order + 1)
+        """
+        number_elements_to_refine = math.floor(rho * len(mark_to_p_refine))
+        mark_to_p_refine.sort(key=lambda x:x[1], reverse=True)
+        for i in range(0, number_elements_to_refine):
+            current_element = mark_to_p_refine[i][0]
+            current_order = self.fespace.GetElementOrder(current_element)
+            self.fespace.SetElementOrder(current_element, current_order + 1)
+        """
         self.fespace.Update(False)
         self.x.Update()
         self.x.Assign(0.0)
@@ -204,7 +231,21 @@ class HpProblem(gym.Env):
         sol_sock.send_solution(self.mesh, orders)
         title = "step " + str(self.k)
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
-        print(orders)
+
+    def ComputeAverageOrder(self):
+        total_els = self.fespace.GetNE()
+        for i in range(0, total_els):
+            element_and_order_dict = {}
+            ord = self.fespace.GetElementOrder(i)
+            if ord in element_and_order_dict:
+                val = element_and_order_dict[ord]
+                element_and_order_dict[ord] = val+1
+            else:
+                element_and_order_dict[ord] = 1
+        running_average = 0
+        for key in element_and_order_dict:
+            running_average = running_average + key * element_and_order_dict[key] / total_els
+        return running_average
 
 
 
