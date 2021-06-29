@@ -5,12 +5,14 @@ from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
 from prob_envs.StationaryProblem import DeRefStationaryProblem
 import random
+from gym import spaces
 
 def ball(pt, t):
-    C = 1.0
     alpha = 0.01
     r0 = 0.25
     r00 = 0.1
+    # r0 = 0.15 + 0.1 * cos(2*t)**2
+    # r00 = 0.05 + 0.05 * cos(t)**2
     x0 = r0*cos(t) + 0.5
     y0 = r0*sin(t) + 0.5
     x = pt[0] - x0
@@ -29,75 +31,66 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.error_target = kwargs.get('error_target',1e-3)
         self.penalty_rate = kwargs.get('penalty_rate',1.0)
         self.convex_coeff = kwargs.get('convex_coeff',0.5)
+        self.strict_dof_threshold = kwargs.get('strict_dof_threshold',10*self.dof_threshold)
         self.delta_t = 0.05
         delattr(self, 'RHS')
         self.RHS = RHSCoefficient()
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reset(self):
         self.time = random.uniform(-np.pi, np.pi)
-        self.rolling_average = 0.0
+        self.rolling_average_cost = 0.0
+        self.rolling_average_error = 0.0
+        self.rolling_average_dofs = 0.0
         obs = super().reset()
         return obs
 
     def step(self, action):
+        ## set-up
         self.k += 1
         self.UpdateMesh(action)
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.Errors2Observation(self.errors)
+        obs = self.GetObservation()
         global_error = GlobalError(self.errors)
         num_dofs = self.fespace.GetTrueVSize()
         done = False
+        log_num_dofs = np.log(num_dofs)
+        log_global_error = np.log(global_error)
+        log_dof_threshold = np.log(self.dof_threshold)
+        log_error_threshold = np.log(self.error_threshold)
+        ## compute instantaneous cost
         if self.optimization_type == 'dof_threshold':
-            distance_from_target_error = np.log(global_error/self.error_target)**2
-            # distance_from_target_error = np.maximum(np.log(np.abs(global_error-self.error_target)), -10)/10
             if self.k == 1:
-                cost = distance_from_target_error
-                self.rolling_average = distance_from_target_error
+                self.rolling_average_dofs = log_num_dofs
             else:
-                cost = (distance_from_target_error - self.rolling_average)/self.k
-                self.rolling_average *= (self.k-1)/self.k
-                self.rolling_average += distance_from_target_error/self.k
-            if num_dofs > self.dof_threshold:
-                cost += np.log(num_dofs/self.dof_threshold)/(self.k**self.penalty_rate)
-                # cost = np.abs(self.rolling_average)
-                if num_dofs > 10*self.dof_threshold:
-                    done = True
+                self.rolling_average_dofs *= (self.k-1)/self.k
+                self.rolling_average_dofs += log_num_dofs/self.k
+            pen = 1e2
+            instantaneous_cost = log_global_error + pen*max(0,self.rolling_average_dofs-log_dof_threshold)
         elif self.optimization_type == 'error_threshold':
-            log_num_dofs = np.log(num_dofs)
             if self.k == 1:
-                cost = log_num_dofs
-                self.rolling_average = log_num_dofs
+                self.rolling_average_error = log_global_error
             else:
-                cost = (log_num_dofs - self.rolling_average)/self.k
-                self.rolling_average *= (self.k-1)/self.k
-                self.rolling_average += log_num_dofs/self.k
-            if global_error > self.error_threshold:
-                cost += np.log(global_error/self.error_threshold)/(self.k**self.penalty_rate)
-            if num_dofs > self.dof_threshold:
-                done = True
+                self.rolling_average_error *= (self.k-1)/self.k
+                self.rolling_average_error += log_global_error/self.k
+            pen = 1e2
+            instantaneous_cost = log_num_dofs + pen*max(0,self.rolling_average_error-log_error_threshold)
         else:
             alpha = self.convex_coeff
             d = self.mesh.Dimension()
-            log_num_dofs = np.log(num_dofs)
-            log_global_error = np.log(global_error)
-            if self.k == 1:
-                cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error
-                self.rolling_average = alpha*log_num_dofs/d + (1-alpha)*log_global_error
-            else:
-                # beta = max(1/self.k,0.1)
-                # cost = beta*(alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)
-                cost = (alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average)/self.k
-                self.rolling_average *= (self.k-1)/self.k
-                self.rolling_average += (alpha*log_num_dofs/d + (1-alpha)*log_global_error)/self.k
-                # cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error - self.rolling_average
-                # self.rolling_average = alpha*log_num_dofs/d + (1-alpha)*log_global_error
-            if num_dofs > self.dof_threshold:
-                cost += 10.0/self.k
-                done = True
-            # if random.uniform(0,1) < 0.05:
-                # done = True
-                # self.reset()
+            instantaneous_cost = alpha*log_num_dofs/d + (1-alpha)*log_global_error
+        ## compute incremental cost
+        if self.k == 1:
+            cost = instantaneous_cost
+            self.rolling_average_cost = cost
+        else:
+            cost = (instantaneous_cost - self.rolling_average_cost)/self.k
+            self.rolling_average_cost *= (self.k-1)/self.k
+            self.rolling_average_cost += instantaneous_cost/self.k
+        ## exit if taking too long
+        if num_dofs > self.strict_dof_threshold:
+            done = True
         info = {'global_error':global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
         return obs, -cost, done, info
 
@@ -105,6 +98,12 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.time += self.delta_t
         self.RHS.SetTime(self.time)
         super().AssembleAndSolve()
+
+    def GetObservation(self):
+        stats = Statistics(self.errors)
+        # obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        obs = [self.rolling_average_cost, stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        return np.array(obs)
 
     def render(self):
         if not hasattr(self, 'sol_sock_soln'):

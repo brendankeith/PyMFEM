@@ -49,7 +49,7 @@ class StationaryProblem(gym.Env):
         self.Setup()
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.Errors2Observation(self.errors)
+        obs = self.GetObservation()
         self.global_error = GlobalError(self.errors)
         self.sum_of_dofs = self.fespace.GetTrueVSize()
         return obs
@@ -59,7 +59,7 @@ class StationaryProblem(gym.Env):
         self.UpdateMesh(action)
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.Errors2Observation(self.errors)
+        obs = self.GetObservation()
         num_dofs = self.fespace.GetTrueVSize()
         if self.optimization_type == 'error_threshold':
             global_error = GlobalError(self.errors)
@@ -69,8 +69,7 @@ class StationaryProblem(gym.Env):
                 done = True
             else:
                 done = False
-                self.global_error = global_error
-            if self.sum_of_dofs > 1e5 or self.k > 100:
+            if self.sum_of_dofs > 5e5 or self.k > 100:
                 cost = 0.0
                 done = True
         elif self.optimization_type == 'dof_threshold':
@@ -129,8 +128,8 @@ class StationaryProblem(gym.Env):
 
         self.refiner = mfem.ThresholdRefiner(self.estimator)
 
-    def Errors2Observation(self, errors):
-        stats = Statistics(errors)
+    def GetObservation(self):
+        stats = Statistics(self.errors)
         obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return np.array(obs)
 
