@@ -16,33 +16,35 @@ import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 from prob_envs.MovingLoad import MovingLoadProblem
 
-# prob_config = {
-#     'optimization_type' : 'dof_threshold',
-#     'mesh_name'         : 'inline-quad.mesh',
-#     'num_unif_ref'      : 3,
-#     'order'             : 2,
-#     'error_target'      : 1e-4,
-#     'dof_threshold'     : 1e4,
-# }
+train = True
 
 # prob_config = {
-#     'optimization_type' : 'error_threshold',
-#     'mesh_name'         : 'inline-quad.mesh',
-#     'num_unif_ref'      : 3,
-#     'order'             : 2,
-#     'error_threshold'   : 1e-4,
-#     'dof_threshold'     : 1e4,
-#     'penalty_rate'      : 0.95,
+#     'optimization_type'    : 'dof_threshold',
+#     'mesh_name'            : 'inline-quad.mesh',
+#     'num_unif_ref'         : 3,
+#     'order'                : 2,
+#     'error_target'         : 1e-4,
+#     'dof_threshold'        : 1e4,
+#     'strict_dof_threshold' : 5e4,
 # }
 
 prob_config = {
-    'optimization_type' : 'convex_combination',
-    'mesh_name'         : 'inline-quad.mesh',
-    'num_unif_ref'      : 3,
-    'order'             : 1,
-    'dof_threshold'     : 1e4,
-    'convex_coeff'      : 0.50, # E[ alpha*log_num_dofs/d + (1-alpha)*log_global_error ]
+    'optimization_type'    : 'error_threshold',
+    'mesh_name'            : 'inline-quad.mesh',
+    'num_unif_ref'         : 3,
+    'order'                : 2,
+    'error_threshold'      : 5e-5,
+    'strict_dof_threshold' : 2e4,
 }
+
+# prob_config = {
+#     'optimization_type'    : 'convex_combination',
+#     'mesh_name'            : 'inline-quad.mesh',
+#     'num_unif_ref'         : 3,
+#     'order'                : 1,
+#     'convex_coeff'         : 0.20, # E[ alpha*log_num_dofs/d + (1-alpha)*log_global_error ]
+#     'strict_dof_threshold' : 1e5,
+# }
 
 # env = MovingLoadProblem(**prob_config)
 # env.reset()
@@ -55,8 +57,8 @@ prob_config = {
 # env.step(np.array([0.9,0.1]))
 # env.RenderRHS()
 
-total_episodes = 1000
-batch_size = 64
+total_episodes = 3000
+batch_size = 32
 checkpoint_period = 200
 
 nbatches = int(total_episodes/batch_size)
@@ -64,11 +66,11 @@ nbatches = int(total_episodes/batch_size)
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = batch_size
 config['sgd_minibatch_size'] = batch_size
-config['rollout_fragment_length'] = batch_size
+config['rollout_fragment_length'] = 80
 config['num_workers'] = 6
 config['num_gpus'] = 0
 config['gamma'] = 1.0
-config['lr'] = 1e-3
+config['lr'] = 1e-4
 config['no_done_at_end'] = True
 
 ray.shutdown()
@@ -79,19 +81,22 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 policy = agent.get_policy()
 model = policy.model
 
-episode = 0
-checkpoint_episode = 0
-for n in range(nbatches):
-    print("training batch %d of %d batches" % (n+1,nbatches))
-    result = agent.train()
-    episode += config['train_batch_size']
-    checkpoint_episode += config['train_batch_size']
-    episode_score = -result["episode_reward_mean"]
-    print ("Episode cost", episode_score)
-    if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
-        checkpoint_episode = 0
-        checkpoint_path = agent.save()
-        print(checkpoint_path)
+if train:
+    episode = 0
+    checkpoint_episode = 0
+    for n in range(nbatches):
+        print("training batch %d of %d batches" % (n+1,nbatches))
+        result = agent.train()
+        episode += config['train_batch_size']
+        checkpoint_episode += config['train_batch_size']
+        episode_score = -result["episode_reward_mean"]
+        print ("Episode cost", episode_score)
+        if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
+            checkpoint_episode = 0
+            checkpoint_path = agent.save()
+            print(checkpoint_path)
+else:
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-28_13-43-48w7rr2sx1/checkpoint_000091/checkpoint-91'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -100,7 +105,7 @@ df = pd.read_csv(csv_path)
 cost = -df.episode_reward_mean.to_numpy()
 
 ## plots
-fig, ax = plt.subplots(3)
+fig, ax = plt.subplots(4)
 ax[0].plot(cost,'r',lw=1.3)
 ax[0].set_ylabel("cost")
 ax[0].set_xlabel("iteration")
@@ -119,7 +124,9 @@ print("Num. Elems. = ", env.mesh.GetNE())
 ref_thetas = []
 deref_thetas = []
 max_local_errors = []
-for _ in range(200):
+global_errors = []
+num_steps = 200
+for _ in range(num_steps):
     action = agent.compute_action(obs,explore=False)
     obs, reward, done, info = env.step(action)
     episode_cost -= reward
@@ -134,21 +141,37 @@ for _ in range(200):
     ref_thetas.append(action[0].item())
     deref_thetas.append(action[0].item()*action[1].item())
     max_local_errors.append(info['max_local_errors'])
-    time.sleep(0.1)
+    global_errors.append(info['global_error'])
+    time.sleep(0.05)
+    # env.RenderRHS()
     env.RenderMesh()
 ref_thetas = np.array(ref_thetas)
 deref_thetas = np.array(deref_thetas)
 max_local_errors = np.array(max_local_errors)
+global_errors = np.array(global_errors)
 
 ax[1].plot(ref_thetas,'r',lw=1.3,label='ref. param.')
 ax[1].plot(deref_thetas,'b',lw=1.3,label='deref. param.')
 ax[1].set_ylabel("Parameter")
-ax[1].set_xlabel("Iteration")
+ax[1].set_xlabel("Time step")
 ax[1].legend()
 
 ax[2].plot(ref_thetas*max_local_errors,'r',lw=1.3,label='ref. thresh.')
 ax[2].plot(deref_thetas*max_local_errors,'b',lw=1.3,label='deref. thresh.')
 ax[2].set_ylabel("Threshold")
-ax[2].set_xlabel("Iteration")
+ax[2].set_xlabel("Time step")
 ax[2].legend()
+
+ax[3].set_ylabel("Global error estimate")
+ax[3].set_xlabel("Time step")
+try:
+    error_threshold = prob_config['error_threshold']
+    mean_error = np.mean(global_errors)
+    ax[3].plot(global_errors,'r',lw=1.3,label='error')
+    ax[3].plot([0,num_steps],[mean_error,mean_error],'--k',lw=1.3,label='mean error')
+    ax[3].plot([0,num_steps],[error_threshold,error_threshold],'--b',lw=1.3,label='err. thresh.')
+    ax[3].legend()
+except:
+    ax[3].plot(global_errors,'r',lw=1.3)
+
 plt.show()
