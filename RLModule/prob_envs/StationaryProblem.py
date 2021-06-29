@@ -62,14 +62,15 @@ class StationaryProblem(gym.Env):
         obs = self.Errors2Observation(self.errors)
         num_dofs = self.fespace.GetTrueVSize()
         if self.optimization_type == 'error_threshold':
-            self.global_error = GlobalError(self.errors)
+            global_error = GlobalError(self.errors)
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
             if self.global_error < self.error_threshold:
                 done = True
             else:
                 done = False
-            if self.sum_of_dofs > 1e6 or self.k > 100:
+                self.global_error = global_error
+            if self.sum_of_dofs > 1e5 or self.k > 100:
                 cost = 0.0
                 done = True
         elif self.optimization_type == 'dof_threshold':
@@ -147,6 +148,7 @@ class StationaryProblem(gym.Env):
         self.a.RecoverFEMSolution(X,self.b,self.x)
 
     def GetLocalErrors(self):
+        self.estimator.Reset()
         mfem_errors = self.estimator.GetLocalErrors()
         errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())])
         return errors
