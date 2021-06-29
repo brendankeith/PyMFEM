@@ -140,6 +140,8 @@ ref_thetas = np.array(ref_thetas)
 deref_thetas = np.array(deref_thetas)
 max_local_errors = np.array(max_local_errors)
 
+env.render()
+
 ax[1].plot(ref_thetas,'r',lw=1.3,label='ref. param.')
 ax[1].plot(deref_thetas,'b',lw=1.3,label='deref. param.')
 ax[1].set_ylabel("Parameter")
@@ -173,7 +175,6 @@ for theta in np.linspace(0,0.9999,num=11):
         print("episode cost = ", episode_cost)
     # env.RenderMesh()    
     costs.append(episode_cost)
-
 
 ax[3].plot(actions,costs,'-or',lw=1.3)
 ax[3].plot([0,1],[rlcost,rlcost],'-b',lw=1.3)
