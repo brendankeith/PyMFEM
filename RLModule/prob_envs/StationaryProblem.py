@@ -198,12 +198,12 @@ class DeRefStationaryProblem(StationaryProblem):
             # new_errors = self.errors
         # else:
         if self.mesh.GetLastOperation() == self.mesh.REFINE:
-            rtransforms = self.mesh.GetRefinementTransforms()
+            self.rtransforms = self.mesh.GetRefinementTransforms()
             coarse_to_fine = mfem.Table()
             coarse_to_ref_type = mfem.intArray()
             ref_type_to_matrix = mfem.Table()
             ref_type_to_geom = mfem.GeometryTypeArray()
-            rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
+            self.rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
             new_errors = mfem.doubleArray(coarse_to_fine.Width())
             tmp = mfem.intArray(1)
             for i in range(coarse_to_fine.Width()):
