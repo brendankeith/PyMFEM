@@ -167,7 +167,7 @@ class StationaryProblem(gym.Env):
         self.Refine(theta)
 
     def Refine(self, theta):
-        # self.refiner.Reset()
+        self.refiner.Reset()
         self.refiner.SetTotalErrorFraction(theta)
         self.refiner.Apply(self.mesh)
         self.fespace.Update()
@@ -189,14 +189,10 @@ class DeRefStationaryProblem(StationaryProblem):
         theta2 = action[1].item() # derefine threshold
         theta2 *= theta1 # enforces deref < ref threshold 
         self.Refine(theta1)
-        self.Derefine(theta1, theta2)
+        self.Derefine(theta2)
     
-    def Derefine(self, theta1, theta2):
+    def Derefine(self, theta2):
         threshold = theta2 * np.max(self.errors)
-        # if self.mesh.GetLastOperation() == self.mesh.REFINE:
-        # if theta1 == 1.0:
-            # new_errors = self.errors
-        # else:
         if self.mesh.GetLastOperation() == self.mesh.REFINE:
             self.rtransforms = self.mesh.GetRefinementTransforms()
             coarse_to_fine = mfem.Table()
