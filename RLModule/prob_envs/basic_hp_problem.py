@@ -1,3 +1,5 @@
+from threading import current_thread
+from mfem._ser.gridfunc import GridFunction, ProlongToMaxOrder
 import os
 from os.path import expanduser, join
 import gym
@@ -6,32 +8,24 @@ import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
-from utils.solution_wavefront import *
+import math
 
-class StationaryProblem(gym.Env):
+class HpProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
-        self.problem_type = kwargs.get('problem_type','laplace')
+        self.BC = mfem.ConstantCoefficient(0.0)
+        self.RHS = mfem.ConstantCoefficient(1.0)
+        self.coeff = mfem.ConstantCoefficient(1.0)
 
-        if (self.problem_type == 'laplace'):
-            self.BC = mfem.ConstantCoefficient(0.0)
-            self.RHS = mfem.ConstantCoefficient(1.0)
-            self.coeff = mfem.ConstantCoefficient(1.0)
-        elif (self.problem_type == 'wavefront'):
-            self.BC = WavefrontSolutionCoefficient()
-            self.RHS = WavefrontRHSCoefficient()
-            self.coeff = mfem.ConstantCoefficient(1.0)
-        else:
-            print("Problem type not recognized.  Exiting.")
-            exit()
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
-        self.error_threshold = kwargs.get('error_threshold',1e-5)
+        self.error_threshold = kwargs.get('error_threshold',1e-3)
         self.dof_threshold = kwargs.get('dof_threshold',1e4)
         self.step_threshold = kwargs.get('step_threshold',10)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
-        order = kwargs.get('order',1)    
+        order = kwargs.get('order',1)
+        self.average_order = order
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
         mesh.EnsureNCMesh()
@@ -40,8 +34,11 @@ class StationaryProblem(gym.Env):
         self.dim = mesh.Dimension()
         self.initial_mesh = mesh
         self.order = order
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
+#        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.action_space = spaces.Dict({"space" : spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32), 
+                                         "order" : spaces.Discrete(2)})
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
+        self.THETA = 0.7
     
     def reset(self):
         self.k = 0
@@ -49,7 +46,7 @@ class StationaryProblem(gym.Env):
         self.Setup()
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.GetObservation()
+        obs = self.Errors2Observation(self.errors)
         self.global_error = GlobalError(self.errors)
         self.sum_of_dofs = self.fespace.GetTrueVSize()
         return obs
@@ -59,19 +56,21 @@ class StationaryProblem(gym.Env):
         self.UpdateMesh(action)
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.GetObservation()
-        num_dofs = self.fespace.GetTrueVSize()
+        obs = self.Errors2Observation(self.errors)
         if self.optimization_type == 'error_threshold':
             global_error = GlobalError(self.errors)
-            cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
+            num_dofs = self.fespace.GetTrueVSize()
+            cost = np.log(1.0 + num_dofs/self.sum_of_dofs) #- self.ComputeAverageOrder()
             self.sum_of_dofs += num_dofs
             if self.global_error < self.error_threshold:
                 done = True
             else:
                 done = False
-            if self.sum_of_dofs > 5e5 or self.k > 100:
-                cost = 0.0
+                self.global_error = global_error
+            if self.sum_of_dofs > self.dof_threshold or self.k > 50:
+                cost = 10.0
                 done = True
+                #print("Optimal Policy reached termination condition.")
         elif self.optimization_type == 'dof_threshold':
             self.sum_of_dofs += self.fespace.GetTrueVSize()
             if self.sum_of_dofs > self.dof_threshold:
@@ -79,7 +78,7 @@ class StationaryProblem(gym.Env):
                 done = True
             else:
                 global_error = GlobalError(self.errors)
-                cost = np.log(global_error/self.global_error)
+                cost = np.log(global_error/self.global_error) #- self.ComputeAverageOrder()
                 self.global_error = global_error
                 done = False
         else:
@@ -97,7 +96,9 @@ class StationaryProblem(gym.Env):
                 done = True
             else:
                 done = False
-        info = {'global_error':self.global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
+        info = {}
+
+        #print("Optimal Policy reached termination condition.")
         return obs, -cost, done, info
     
     def render(self):
@@ -128,9 +129,11 @@ class StationaryProblem(gym.Env):
 
         self.refiner = mfem.ThresholdRefiner(self.estimator)
 
-    def GetObservation(self):
-        stats = Statistics(self.errors)
-        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+
+    def Errors2Observation(self, errors):
+        stats = Statistics(errors)
+        average_order = self.ComputeAverageOrder()
+        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis, average_order]
         return np.array(obs)
 
     def AssembleAndSolve(self):
@@ -157,84 +160,111 @@ class StationaryProblem(gym.Env):
         sol_sock.precision(8)
         zerogf = mfem.GridFunction(self.fespace)
         zerogf.Assign(0.0)
-        sol_sock.send_solution(self.mesh, zerogf)
+        prolonged = ProlongToMaxOrder(self.x)
+        sol_sock.send_solution(self.mesh, prolonged)
         title = "step " + str(self.k)
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
 
     def UpdateMesh(self, action):
-        action = np.clip(action, 0.0, 1.0)
-        theta = action.item() # refinement threshold
+        rho = action['order'] # determine if we want to refine the order this time
+        theta = action['space'].item() #refinement threshold
+        #theta = action[0].item() #refinement threshold for h
+        #rho = action[1].item() 
+        #theta = self.THETA
+        if theta < 0. :
+          theta = 0.
+        if theta > 0.999 :
+          theta = 0.999 
+        #if rho < 0. :
+        #  rho = 0.
+        #if rho > 0.999 :
+        #  rho = 0.999 
+        if rho == 1:
+            self.Prefine(theta)
+        #self.Prefine(theta, rho)
         self.Refine(theta)
 
     def Refine(self, theta):
         # self.refiner.Reset()
         self.refiner.SetTotalErrorFraction(theta)
         self.refiner.Apply(self.mesh)
-        self.fespace.Update()
+        self.fespace.Update(False)
         self.x.Update()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
         # self.fespace.UpdatesFinished()
         self.a.Update()
         self.b.Update()
 
+    def Prefine(self, theta):
+        #mark_to_p_refine = []
+        threshold = theta * np.max(self.errors)
+        for i in range(self.mesh.GetNE()):
+            if threshold >= self.errors[i]:
+                #mark_to_p_refine.append((i, self.errors[i]))
+                current_order = self.fespace.GetElementOrder(i)
+                self.fespace.SetElementOrder(i, current_order + 1)
+        """
+        number_elements_to_refine = math.floor(rho * len(mark_to_p_refine))
+        mark_to_p_refine.sort(key=lambda x:x[1], reverse=True)
+        for i in range(0, number_elements_to_refine):
+            current_element = mark_to_p_refine[i][0]
+            current_order = self.fespace.GetElementOrder(current_element)
+            self.fespace.SetElementOrder(current_element, current_order + 1)
+        """
+        self.fespace.Update(False)
+        self.x.Update()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+        # self.fespace.UpdatesFinished()
+        self.a.Update()
+        self.b.Update()
 
-class DeRefStationaryProblem(StationaryProblem):
+    def RenderHPmesh(self):
+        ordersfec = mfem.L2_FECollection(0, self.dim)
+        ordersfes = mfem.FiniteElementSpace(self.mesh, ordersfec)
+        orders = mfem.GridFunction(ordersfes)
+        for i in range(0, self.mesh.GetNE()):
+            elem_dofs = 0
+            elem_dofs = ordersfes.GetElementDofs(i)
+            orders[elem_dofs[0]] = self.fespace.GetElementOrder(i)
+        sol_sock = mfem.socketstream("localhost", 19916)
+        sol_sock.precision(8)
+        sol_sock.send_solution(self.mesh, orders)
+        title = "step " + str(self.k)
+        sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
 
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
+    def ComputeAverageOrder(self):
+        total_els = self.fespace.GetNE()
+        for i in range(0, total_els):
+            element_and_order_dict = {}
+            ord = self.fespace.GetElementOrder(i)
+            if ord in element_and_order_dict:
+                val = element_and_order_dict[ord]
+                element_and_order_dict[ord] = val+1
+            else:
+                element_and_order_dict[ord] = 1
+        running_average = 0
+        for key in element_and_order_dict:
+            running_average = running_average + key * element_and_order_dict[key] / total_els
+        return running_average
 
-    def UpdateMesh(self, action):
-        action = np.clip(action, 0.0, 1.0)
-        theta1 = action[0].item() # refine threshold
-        theta2 = action[1].item() # derefine threshold
-        theta2 *= theta1 # enforces deref < ref threshold 
-        self.Refine(theta1)
-        self.Derefine(theta1, theta2)
+
+
     
-    def Derefine(self, theta1, theta2):
-        threshold = theta2 * np.max(self.errors)
-        # if self.mesh.GetLastOperation() == self.mesh.REFINE:
-        # if theta1 == 1.0:
-            # new_errors = self.errors
-        # else:
-        if self.mesh.GetLastOperation() == self.mesh.REFINE:
-            self.rtransforms = self.mesh.GetRefinementTransforms()
-            coarse_to_fine = mfem.Table()
-            coarse_to_ref_type = mfem.intArray()
-            ref_type_to_matrix = mfem.Table()
-            ref_type_to_geom = mfem.GeometryTypeArray()
-            self.rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
-            new_errors = mfem.doubleArray(coarse_to_fine.Width())
-            tmp = mfem.intArray(1)
-            for i in range(coarse_to_fine.Width()):
-                new_errors[i] = mfem.infinity()
-            for i in range(coarse_to_fine.Size()):
-                if coarse_to_fine.RowSize(i) == 1:
-                    tmp_data = coarse_to_fine.GetRow(i)
-                    tmp.Assign(tmp_data)
-                    index = tmp[0]
-                    new_errors[index] = self.errors[i]
-        else:
-            nel = len(self.errors)
-            new_errors = mfem.doubleArray(nel)
-            for i in range(nel):
-                new_errors[i] = self.errors[i]
-        self.mesh.DerefineByError(new_errors,threshold)
-        
-        # self.refiner.Reset()
-        self.fespace.Update()
-        self.x.Update()
-        # self.fespace.UpdatesFinished()
-        self.a.Update()
-        self.b.Update()
-
-class DeRefStationaryProblemBob(DeRefStationaryProblem):
-
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.factor = 5e-5
-
-    def UpdateMesh(self, action):
-        emax = np.max(self.errors)
-        theta1 = self.factor / max(emax, self.factor)
-        self.Refine(theta1)
+"""
+L2_FECollection ordersfec(0,dim);
+FiniteElementSpace ordersfes(mesh,&ordersfec);
+GridFunction orders(&ordersfes);
+for (int i = 0;i<mesh->GetNE(); i++)
+{
+  Array<int> elem_dofs;
+  ordersfes.GetElementDofs(i,elem_dofs);
+  MFEM_VERIFY(elem_dofs.Size() == 1,"Wrong elem_dofs size");
+  orders[elem_dofs[0]] = fespace->GetElementOrder(i);
+}
+socketstream orders_sock(vishost, visport);
+orders_sock.precision(8);
+orders_sock << "solution\n" << *mesh << orders << flush;
+sol_sock.send_solution(self.mesh, prolonged)
+"""

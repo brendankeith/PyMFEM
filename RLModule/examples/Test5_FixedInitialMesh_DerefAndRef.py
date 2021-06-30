@@ -15,7 +15,7 @@ import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 from prob_envs.StationaryProblem import DeRefStationaryProblem, DeRefStationaryProblemBob
 
-train = True
+train = False
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
     # 'mesh_name'         : 'l-shape.mesh',
@@ -40,14 +40,14 @@ prob_config = {
 # env.step(np.array([0.5,0.0]))
 # env.render()
 
-total_episodes = 10000
-batch_size = 64
-checkpoint_period = 200
+# total_episodes = 10000
+# batch_size = 64
+# checkpoint_period = 200
 
 # # short run - for debugging
-# total_episodes = 100
-# batch_size = 10
-# checkpoint_period = 20
+total_episodes = 100
+batch_size = 10
+checkpoint_period = 20
 
 nbatches = int(total_episodes/batch_size)
 
@@ -86,7 +86,8 @@ else:
     # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-17_11-52-02npl_aius/checkpoint_000153/checkpoint-153'
     # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-17_12-33-12wojlg07o/checkpoint_000153/checkpoint-153'
     # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-21_13-52-2843jvi5fv/checkpoint_000153/checkpoint-153'
-    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-21_14-32-16_bpybyev/checkpoint_000153/checkpoint-153'
+    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-21_14-32-16_bpybyev/checkpoint_000153/checkpoint-153'
+    checkpoint_path = '/Users/gillette7/ray_results/PPO_my_env_2021-06-23_11-02-08kzlt1b3f/checkpoint_000153/checkpoint-153'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -133,6 +134,8 @@ while True:
     deref_thetas.append(action[0].item()*action[1].item())
     max_local_errors.append(info['max_local_errors'])
 env.RenderMesh()
+env.render()
+
 ref_thetas = np.array(ref_thetas)
 deref_thetas = np.array(deref_thetas)
 max_local_errors = np.array(max_local_errors)
@@ -170,7 +173,7 @@ for theta in np.linspace(0,0.9999,num=11):
         print("derefine action = ", action[1].item())
         print("Num. Elems. = ", env.mesh.GetNE())
         print("episode cost = ", episode_cost)
-    env.RenderMesh()    
+    # env.RenderMesh()    
     costs.append(episode_cost)
 
 ax[3].plot(actions,costs,'-or',lw=1.3)

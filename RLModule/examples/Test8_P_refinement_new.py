@@ -12,7 +12,7 @@ import pandas as pd
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
-from prob_envs.basic_hp_problem import HpProblem
+from prob_envs.double_uniform_hp_problem import DoubleHpProblem
 # from prob_envs.VariableInitialMesh import VariableInitialMesh
 import numpy as np
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
@@ -31,13 +31,13 @@ prob_config = {
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
     'order'             : 2,
-    'optimization_type' : 'error_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
     # 'random_mesh'       : True
-    'error_threshold' : 1e-3,  #default is 1e-3
-    'dof_threshold' : 5e3 #default is 1e4
+    #'error_threshold' : 2e-3,  #default is 1e-3
+    #'dof_threshold' : 4e3 #default is 1e4
 }
 
-total_episodes = 4000
+total_episodes = 6000
 batch_size = 16
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 200
@@ -54,8 +54,8 @@ config['lr'] = 1e-4
 
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
-env = HpProblem(**prob_config)
-register_env("my_env", lambda config : HpProblem(**prob_config))
+env = DoubleHpProblem(**prob_config)
+register_env("my_env", lambda config : DoubleHpProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
 episode = 0
