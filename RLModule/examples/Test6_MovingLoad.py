@@ -16,7 +16,7 @@ import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 from prob_envs.MovingLoad import MovingLoadProblem
 
-train = True
+train = False
 
 prob_config = {
     'optimization_type'    : 'dof_threshold',
@@ -97,7 +97,8 @@ if train:
             print(checkpoint_path)
 else:
     # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-28_13-43-48w7rr2sx1/checkpoint_000091/checkpoint-91'
-    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-29_16-48-07by6qmgso/checkpoint_000029/checkpoint-29'
+    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-29_16-48-07by6qmgso/checkpoint_000029/checkpoint-29'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-30_11-35-25opiheosk/checkpoint_000031/checkpoint-31'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -145,9 +146,9 @@ for _ in range(num_steps):
     max_local_errors.append(info['max_local_errors'])
     global_errors.append(info['global_error'])
     dofs.append(info['num_dofs'])
-    time.sleep(0.05)
+    # time.sleep(0.05)
     # env.RenderRHS()
-    env.RenderMesh()
+    # env.RenderMesh()
 ref_thetas = np.array(ref_thetas)
 deref_thetas = np.array(deref_thetas)
 max_local_errors = np.array(max_local_errors)
@@ -160,8 +161,8 @@ ax[1].set_ylabel("Parameter")
 ax[1].set_xlabel("Time step")
 ax[1].legend()
 
-ax[2].plot(ref_thetas*max_local_errors,'r',lw=1.3,label='ref. thresh.')
-ax[2].plot(deref_thetas*max_local_errors,'b',lw=1.3,label='deref. thresh.')
+ax[2].semilogy(ref_thetas*max_local_errors,'r',lw=1.3,label='ref. thresh.')
+ax[2].semilogy(deref_thetas*max_local_errors,'b',lw=1.3,label='deref. thresh.')
 ax[2].set_ylabel("Threshold")
 ax[2].set_xlabel("Time step")
 ax[2].legend()
@@ -171,12 +172,12 @@ ax[3].set_xlabel("Time step")
 try:
     error_threshold = prob_config['error_threshold']
     mean_error = np.mean(global_errors)
-    ax[3].plot(global_errors,'r',lw=1.3,label='error')
-    ax[3].plot([0,num_steps],[mean_error,mean_error],'--k',lw=1.3,label='mean error')
-    ax[3].plot([0,num_steps],[error_threshold,error_threshold],'--b',lw=1.3,label='err. thresh.')
+    ax[3].semilogy(global_errors,'r',lw=1.3,label='error')
+    ax[3].semilogy([0,num_steps],[mean_error,mean_error],'--k',lw=1.3,label='mean error')
+    ax[3].semilogy([0,num_steps],[error_threshold,error_threshold],'--b',lw=1.3,label='err. thresh.')
     ax[3].legend()
 except:
-    ax[3].plot(global_errors,'r',lw=1.3)
+    ax[3].semilogy(global_errors,'r',lw=1.3)
 
 ax[4].set_ylabel("DOFs")
 ax[4].set_xlabel("Time step")
