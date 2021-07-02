@@ -12,27 +12,40 @@ import math
 from math import atan2, sqrt, sin
 
 #ignore this.
-def PoissonRHS(pt):
+def Exact(pt):
     x = pt[0]
     y = pt[1]
-    r = sqrt(x**2 + y**2)
+    r = sqrt(x*x + y*y)
     alpha = 2. / 3.
+
     theta = atan2(y, x)
+    if y == 0 and x < 0:
+        theta += 2 * np.pi
+    if y < 0:
+        theta += 2 * np.pi
+    if y == 0 and x == -1:
+        theta = np.pi
+    #if r > 0.0:
+    #    return r**alpha * sin(alpha * theta)
+    #else:
+    #    return 0.0
     return r**alpha * sin(alpha * theta)
 
 #ignore this.
-class RHSCoefficient(mfem.PyCoefficientT):
+class ExactCoefficient(mfem.PyCoefficient):
     def EvalValue(self, pt):
-        return PoissonRHS(pt)
+        return Exact(pt)
 
 class DoubleHpProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
-        self.BC = mfem.ConstantCoefficient(0.0)
+        #self.BC = mfem.ConstantCoefficient(0.0)
+        self.BC = ExactCoefficient()
         #delattr(self, 'RHS')
+        self.RHS = mfem.ConstantCoefficient(0.0)
         #self.RHS = RHSCoefficient()
-        self.RHS = mfem.ConstantCoefficient(1.0)
+        #self.RHS = mfem.ConstantCoefficient(1.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
 
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
@@ -45,6 +58,8 @@ class DoubleHpProblem(gym.Env):
         self.average_order = order
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
+        self.mesh = mesh
+        #self.SetBoundaryAttributes()
         mesh.EnsureNCMesh()
         for _ in range(num_unif_ref):
             mesh.UniformRefinement()
@@ -134,6 +149,9 @@ class DoubleHpProblem(gym.Env):
         self.x.Assign(0.0)
         self.ess_bdr = intArray(self.mesh.bdr_attributes.Max())
         self.ess_bdr.Assign(1)
+        #self.ess_bdr.Print()
+        #print(self.ess_bdr[0], self.ess_bdr[1])
+        #print(self.mesh.bdr_attributes.Max())
         self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
         self.flux_fespace = mfem.FiniteElementSpace(self.mesh, fec, dim)
         self.estimator =  mfem.ZienkiewiczZhuEstimator(integ, self.x, self.flux_fespace,
@@ -180,8 +198,10 @@ class DoubleHpProblem(gym.Env):
     def UpdateMesh(self, action):
         #rho = action['order'] # determine if we want to refine the order this time
         #theta = action['space'].item() #refinement threshold
-        theta = action[0].item() #refinement threshold for h
-        rho = action[1].item() 
+        #theta = action[0].item() #refinement threshold for h
+        #rho = action[1].item() 
+        theta = 0.6
+        rho = 0.4
         if theta < 0. :
           theta = 0.
         if theta > 0.999 :
@@ -259,6 +279,97 @@ class DoubleHpProblem(gym.Env):
         for key in element_and_order_dict:
             running_average = running_average + key * element_and_order_dict[key] / total_els
         return running_average
+
+    def SetBoundaryAttributes(self):
+        for i in range(self.mesh.GetNBE()):
+            verts = self.mesh.GetBdrElementVertices(i)
+            vert_in_boundary = False
+            for j in range(len(verts)):
+                temp_arr = mfem.doubleArray(2)
+                coords = self.mesh.GetVertex(verts[j])
+                temp_arr.Assign(coords)
+                if temp_arr[0] == 0.0 and temp_arr[1] == 0.0:
+                   vert_in_boundary = True
+            if vert_in_boundary:
+                self.mesh.SetBdrAttribute(i,2)
+        self.mesh.SetAttributes()
+    
+    def hpDeterministicPolicy(self):
+        thetaDeterministic = 0.05
+        self.reset()
+        #while self.k <= 1:
+        while self.sum_of_dofs < self.dof_threshold:
+            #print("step", self.k)
+            self.k += 1
+            elements_to_h_refine = []
+            elements_to_p_refine = []
+            neighbor_table = self.mesh.ElementToElementTable()
+            for i in range(self.mesh.GetNE()):
+                curr_verts = self.mesh.GetElementVertices(i)
+                element_touching_corner = False
+                threshold = thetaDeterministic * np.max(self.errors)
+                curr_error = self.errors[i]
+
+                if threshold < curr_error:
+                    for j in range(len(curr_verts)):
+                        temp_arr = mfem.doubleArray(2)
+                        coords = self.mesh.GetVertex(curr_verts[j])
+                        temp_arr.Assign(coords)
+                        if temp_arr[0] == 0.0 and temp_arr[1] == 0.0:
+                            element_touching_corner = True
+                    if(element_touching_corner):    
+                        elements_to_h_refine.append(i)
+                    else:
+                        elements_to_p_refine.append(i)
+                        neighbor_row = neighbor_table.GetRow(i)
+                        row_size = neighbor_table.RowSize(i)
+                        neighbor_array = intArray(row_size)
+                        neighbor_array.Assign(neighbor_row)
+                        for l in range(row_size):
+                            neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
+                            if neighbor_order <= self.fespace.GetElementOrder(i) and neighbor_array[l] not in elements_to_h_refine:
+                                elements_to_p_refine.append(neighbor_array[l])
+
+            p_refine_elements = np.unique(elements_to_p_refine).tolist()
+            for k in range(len(p_refine_elements)):
+                current_element = p_refine_elements[k]
+                current_order = self.fespace.GetElementOrder(current_element)
+                self.fespace.SetElementOrder(current_element, current_order + 1)
+            
+            self.fespace.Update(False)
+            self.x.Update()
+            self.x.Assign(0.0)
+            self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+            # self.fespace.UpdatesFinished()
+            self.a.Update()
+            self.b.Update()
+            
+            elements_to_h_refine = intArray(elements_to_h_refine)
+            self.mesh.GeneralRefinement(elements_to_h_refine)
+            
+            self.fespace.Update(False)
+            self.x.Update()
+            self.x.Assign(0.0)
+            self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+            # self.fespace.UpdatesFinished()
+            self.a.Update()
+            self.b.Update()
+            self.AssembleAndSolve()
+            self.errors = self.GetLocalErrors()
+            self.global_error = GlobalError(self.errors)
+            self.sum_of_dofs += self.fespace.GetTrueVSize()
+            
+        print("dofs = ", self.sum_of_dofs)
+        print("Global error = ", self.global_error)
+
+
+                
+                    
+
+
+
+
+
 
 
 
