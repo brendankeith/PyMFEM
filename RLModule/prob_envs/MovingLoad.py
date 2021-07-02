@@ -61,20 +61,23 @@ class MovingLoadProblem(DeRefStationaryProblem):
         log_error_threshold = np.log(self.error_threshold)
         ## compute instantaneous cost
         if self.optimization_type == 'dof_threshold':
+            log_error_target = np.log(self.error_target)
             if self.k == 1:
                 self.rolling_average_dofs = log_num_dofs
             else:
                 self.rolling_average_dofs *= (self.k-1)/self.k
                 self.rolling_average_dofs += log_num_dofs/self.k
             pen = 1e2
+            # instantaneous_cost = (log_global_error - log_error_target)**2 + pen*max(0,self.rolling_average_dofs-log_dof_threshold)**2
             instantaneous_cost = log_global_error + pen*max(0,self.rolling_average_dofs-log_dof_threshold)
+            # instantaneous_cost = log_global_error + (self.rolling_average_dofs-log_dof_threshold)**2
         elif self.optimization_type == 'error_threshold':
             if self.k == 1:
                 self.rolling_average_error = log_global_error
             else:
                 self.rolling_average_error *= (self.k-1)/self.k
                 self.rolling_average_error += log_global_error/self.k
-            pen = 1e2
+            pen = 1e0
             instantaneous_cost = log_num_dofs + pen*max(0,self.rolling_average_error-log_error_threshold)
         else:
             alpha = self.convex_coeff
@@ -103,7 +106,18 @@ class MovingLoadProblem(DeRefStationaryProblem):
         stats = Statistics(self.errors)
         # obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         obs = [self.rolling_average_cost, stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        # if self.optimization_type == 'dof_threshold':
+        #     log_dof_threshold = np.log(self.dof_threshold)
+        #     rel_constraint = (self.rolling_average_dofs-log_dof_threshold)/log_dof_threshold
+        #     obs = [self.rolling_average_cost, rel_constraint, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return np.array(obs)
+
+    # def UpdateMesh(self, action):
+    #     thresh1 = action[0].item() # refine threshold
+    #     thresh2 = action[1].item() # derefine threshold
+    #     thresh2 *= thresh1 # enforces deref < ref threshold 
+    #     self.Refine(theta1)
+    #     self.Derefine(theta1, theta2)
 
     def render(self):
         if not hasattr(self, 'sol_sock_soln'):
