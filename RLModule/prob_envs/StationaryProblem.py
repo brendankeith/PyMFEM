@@ -31,7 +31,7 @@ class StationaryProblem(gym.Env):
         self.step_threshold = kwargs.get('step_threshold',20)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
-        order = kwargs.get('order',1)    
+        order = kwargs.get('order',1)
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
         mesh.EnsureNCMesh()
@@ -41,7 +41,7 @@ class StationaryProblem(gym.Env):
         self.initial_mesh = mesh
         self.order = order
         self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
     
     def reset(self):
         self.k = 0
@@ -61,15 +61,15 @@ class StationaryProblem(gym.Env):
         self.errors = self.GetLocalErrors()
         num_dofs = self.fespace.GetTrueVSize()
         if self.optimization_type == 'error_threshold':
-            global_error = GlobalError(self.errors)
+            self.global_error = GlobalError(self.errors)
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if global_error/self.global_error < self.error_threshold:
+            if self.global_error < self.error_threshold:
                 cost = 0.0
                 done = True
             else:
                 done = False
-            if (self.sum_of_dofs > self.dof_threshold) or (self.k > self.step_threshold):
+            if self.sum_of_dofs > self.dof_threshold:
                 cost += 10.0
                 done = True
         elif self.optimization_type == 'dof_threshold':
@@ -131,7 +131,9 @@ class StationaryProblem(gym.Env):
 
     def GetObservation(self):
         stats = Statistics(self.errors)
-        obs = [np.log(self.sum_of_dofs), stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        rel_dof_threshold = (np.log(self.dof_threshold) - np.log(self.sum_of_dofs))/np.log(self.dof_threshold)
+        rel_error_threshold = (np.log(self.error_threshold) - np.log(self.global_error))/np.log(self.error_threshold)
+        obs = [rel_dof_threshold, rel_error_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         # obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return np.array(obs)
 
