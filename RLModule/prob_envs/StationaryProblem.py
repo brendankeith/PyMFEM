@@ -26,9 +26,9 @@ class StationaryProblem(gym.Env):
             print("Problem type not recognized.  Exiting.")
             exit()
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
-        self.error_threshold = kwargs.get('error_threshold',1e-5)
-        self.dof_threshold = kwargs.get('dof_threshold',1e4)
-        self.step_threshold = kwargs.get('step_threshold',10)
+        self.error_threshold = kwargs.get('error_threshold',1e-3)
+        self.dof_threshold = kwargs.get('dof_threshold',5e4)
+        self.step_threshold = kwargs.get('step_threshold',20)
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
         order = kwargs.get('order',1)    
@@ -49,9 +49,9 @@ class StationaryProblem(gym.Env):
         self.Setup()
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.GetObservation()
-        self.global_error = GlobalError(self.errors)
+        self.global_error = max(GlobalError(self.errors),1e-8)
         self.sum_of_dofs = self.fespace.GetTrueVSize()
+        obs = self.GetObservation()
         return obs
     
     def step(self, action):
@@ -59,18 +59,18 @@ class StationaryProblem(gym.Env):
         self.UpdateMesh(action)
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
-        obs = self.GetObservation()
         num_dofs = self.fespace.GetTrueVSize()
         if self.optimization_type == 'error_threshold':
             global_error = GlobalError(self.errors)
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if self.global_error < self.error_threshold:
+            if global_error/self.global_error < self.error_threshold:
+                cost = 0.0
                 done = True
             else:
                 done = False
-            if self.sum_of_dofs > 5e5 or self.k > 100:
-                cost = 0.0
+            if (self.sum_of_dofs > self.dof_threshold) or (self.k > self.step_threshold):
+                cost += 10.0
                 done = True
         elif self.optimization_type == 'dof_threshold':
             self.sum_of_dofs += self.fespace.GetTrueVSize()
@@ -97,6 +97,7 @@ class StationaryProblem(gym.Env):
                 done = True
             else:
                 done = False
+        obs = self.GetObservation()
         info = {'global_error':self.global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
         return obs, -cost, done, info
     
@@ -130,7 +131,8 @@ class StationaryProblem(gym.Env):
 
     def GetObservation(self):
         stats = Statistics(self.errors)
-        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        obs = [np.log(self.sum_of_dofs), stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        # obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return np.array(obs)
 
     def AssembleAndSolve(self):
