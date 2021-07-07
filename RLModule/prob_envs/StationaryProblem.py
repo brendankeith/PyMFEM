@@ -40,8 +40,8 @@ class StationaryProblem(gym.Env):
         self.dim = mesh.Dimension()
         self.initial_mesh = mesh
         self.order = order
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
+        self.action_space = spaces.Box(low=0.0, high=0.999, shape=(1,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
     
     def reset(self):
         self.k = 0
@@ -131,10 +131,10 @@ class StationaryProblem(gym.Env):
 
     def GetObservation(self):
         stats = Statistics(self.errors)
-        rel_dof_threshold = (np.log(self.dof_threshold) - np.log(self.sum_of_dofs))/np.log(self.dof_threshold)
-        rel_error_threshold = (np.log(self.error_threshold) - np.log(self.global_error))/np.log(self.error_threshold)
-        obs = [rel_dof_threshold, rel_error_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
-        # obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        # rel_dof_threshold = (np.log(self.dof_threshold) - np.log(self.sum_of_dofs))/np.log(self.dof_threshold)
+        # rel_error_threshold = (np.log(self.error_threshold) - np.log(self.global_error))/np.log(self.error_threshold)
+        # obs = [rel_dof_threshold, rel_error_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
         return np.array(obs)
 
     def AssembleAndSolve(self):

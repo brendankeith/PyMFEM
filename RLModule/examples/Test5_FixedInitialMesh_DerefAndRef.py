@@ -15,18 +15,20 @@ import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 from prob_envs.StationaryProblem import DeRefStationaryProblem, DeRefStationaryProblemBob
 
-train = False
+train = True
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
-    # 'mesh_name'         : 'l-shape.mesh',
-    'mesh_name'         : 'inline-quad.mesh',
+    'mesh_name'         : 'l-shape.mesh',
+    # 'mesh_name'         : 'inline-quad.mesh',
     'num_unif_ref'      : 2,
     'num_random_ref'    : 0,
     'order'             : 2,
     'optimization_type' : 'error_threshold',
+    'error_threshold'   : 1e-4,
     # 'optimization_type' : 'dof_threshold',
-    'problem_type' : 'wavefront',
-    # 'problem_type' : 'laplace',
+    'dof_threshold'   : 5e4,
+    # 'problem_type' : 'wavefront',
+    'problem_type' : 'laplace',
 }
 
 # env = DeRefStationaryProblem(**prob_config)
@@ -45,16 +47,18 @@ prob_config = {
 # checkpoint_period = 200
 
 # # short run - for debugging
-total_episodes = 100
-batch_size = 10
-checkpoint_period = 20
+total_episodes = 10000
+batch_size = 100
+sgd_minibatch_size = int(batch_size/5)
+rollout_fragment_length = int(batch_size/5)
+checkpoint_period = 50
 
 nbatches = int(total_episodes/batch_size)
 
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = batch_size
-config['sgd_minibatch_size'] = batch_size
-config['rollout_fragment_length'] = batch_size
+config['sgd_minibatch_size'] = sgd_minibatch_size
+config['rollout_fragment_length'] = rollout_fragment_length
 config['num_workers'] = 6
 config['num_gpus'] = 0
 config['gamma'] = 1.0
@@ -133,14 +137,11 @@ while True:
     ref_thetas.append(action[0].item())
     deref_thetas.append(action[0].item()*action[1].item())
     max_local_errors.append(info['max_local_errors'])
-env.RenderMesh()
-env.render()
+    env.RenderMesh()
 
 ref_thetas = np.array(ref_thetas)
 deref_thetas = np.array(deref_thetas)
 max_local_errors = np.array(max_local_errors)
-
-env.render()
 
 ax[1].plot(ref_thetas,'r',lw=1.3,label='ref. param.')
 ax[1].plot(deref_thetas,'b',lw=1.3,label='deref. param.')

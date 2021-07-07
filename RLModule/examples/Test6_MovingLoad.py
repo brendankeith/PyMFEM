@@ -16,7 +16,7 @@ import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
 from prob_envs.MovingLoad import MovingLoadProblem
 
-train = False
+train = True
 
 prob_config = {
     'optimization_type'    : 'dof_threshold',
@@ -57,7 +57,7 @@ prob_config = {
 # env.step(np.array([0.9,0.1]))
 # env.RenderRHS()
 
-total_episodes = 1000
+total_episodes = 4000
 batch_size = 32
 checkpoint_period = 50
 
@@ -96,9 +96,8 @@ if train:
             checkpoint_path = agent.save()
             print(checkpoint_path)
 else:
-    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-28_13-43-48w7rr2sx1/checkpoint_000091/checkpoint-91'
-    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-29_16-48-07by6qmgso/checkpoint_000029/checkpoint-29'
-    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-30_11-35-25opiheosk/checkpoint_000031/checkpoint-31'
+    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-30_11-35-25opiheosk/checkpoint_000031/checkpoint-31'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-30_14-01-52c7mieuut/checkpoint_000031/checkpoint-31'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -146,9 +145,9 @@ for _ in range(num_steps):
     max_local_errors.append(info['max_local_errors'])
     global_errors.append(info['global_error'])
     dofs.append(info['num_dofs'])
-    # time.sleep(0.05)
+    time.sleep(0.05)
     # env.RenderRHS()
-    # env.RenderMesh()
+    env.RenderMesh()
 ref_thetas = np.array(ref_thetas)
 deref_thetas = np.array(deref_thetas)
 max_local_errors = np.array(max_local_errors)

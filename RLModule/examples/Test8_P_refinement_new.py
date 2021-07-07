@@ -59,19 +59,6 @@ env = DoubleHpProblem(**prob_config)
 register_env("my_env", lambda config : DoubleHpProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
-#env.hpDeterministicPolicy()
-#env.render()
-#env.RenderHPmesh()
-"""
-env.reset()
-env.step(np.array([0.25, 1]))
-env.RenderHPmesh()
-env.step(np.array([1, 0.25]))
-env.RenderHPmesh()
-env.step(np.array([0.5, 0.25]))
-env.RenderHPmesh()
-"""
-
 
 episode = 0
 checkpoint_episode = 0
@@ -139,7 +126,6 @@ while not done:
     #env.RenderMesh()
     env.RenderHPmesh()
 
-
 """
 costs = []
 rlcosts = []
@@ -149,7 +135,7 @@ for i in range(1, nth):
     for j in range(0, 2):
         #action = np.array([i/(nth-1)])
         action = {'order' : j, 'space' : i / (nth-1)}
-        actions.append(action.item())
+        # actions.append(action.item())
         rlcosts.append(rlcost)
         env.reset()
         done = False
@@ -163,8 +149,8 @@ for i in range(1, nth):
             print("episode cost = ", episode_cost)
         costs.append(episode_cost)
 
-ax[1].plot(actions,costs,'-or',lw=1.3)
-ax[1].plot(actions,rlcosts,'-b',lw=1.3)
+ax[1].plot(costs,'-or',lw=1.3)
+ax[1].plot(rlcosts,'-b',lw=1.3)
 # ax.semilogy(cost,'r',lw=1.3)
 ax[1].set_ylabel("cost")
 ax[1].set_xlabel("Constant Actions (theta)")
