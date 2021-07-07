@@ -66,6 +66,7 @@ class DoubleHpProblem(gym.Env):
         self.dim = mesh.Dimension()
         self.initial_mesh = mesh
         self.order = order
+        self.alpha = 0.05
         self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
     
@@ -77,6 +78,7 @@ class DoubleHpProblem(gym.Env):
         self.errors = self.GetLocalErrors()
         obs = self.Errors2Observation(self.errors)
         self.global_error = GlobalError(self.errors)
+        self.initial_error_estimate = self.global_error
         self.sum_of_dofs = self.fespace.GetTrueVSize()
         return obs
     
@@ -87,17 +89,19 @@ class DoubleHpProblem(gym.Env):
         self.errors = self.GetLocalErrors()
         obs = self.Errors2Observation(self.errors)
         if self.optimization_type == 'error_threshold':
-            global_error = GlobalError(self.errors)
+            self.global_error = GlobalError(self.errors)
             num_dofs = self.fespace.GetTrueVSize()
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
-            if self.global_error < self.error_threshold:
+            if self.global_error < self.alpha * self.initial_error_estimate:
+            #if self.global_error < self.error_threshold:
+                cost = 0.0
                 done = True
             else:
                 done = False
-                self.global_error = global_error
+                #self.global_error = global_error
             if self.sum_of_dofs > self.dof_threshold or self.k > 50:
-                cost = 10.0
+                cost += 10.0
                 done = True
         elif self.optimization_type == 'dof_threshold':
             self.sum_of_dofs += self.fespace.GetTrueVSize()
@@ -198,10 +202,11 @@ class DoubleHpProblem(gym.Env):
     def UpdateMesh(self, action):
         #rho = action['order'] # determine if we want to refine the order this time
         #theta = action['space'].item() #refinement threshold
-        #theta = action[0].item() #refinement threshold for h
-        #rho = action[1].item() 
-        theta = 0.6
-        rho = 0.4
+        theta = action[0].item() #refinement threshold for h
+        rho = action[1].item() 
+        rho = theta * rho
+        #theta = 0.6
+        #rho = 0.4
         if theta < 0. :
           theta = 0.
         if theta > 0.999 :
@@ -233,9 +238,6 @@ class DoubleHpProblem(gym.Env):
         for i in range(self.mesh.GetNE()):
             if threshold >= self.errors[i]:
                 mark_to_p_refine.append((i, self.errors[i]))
-                #current_order = self.fespace.GetElementOrder(i)
-                #self.fespace.SetElementOrder(i, current_order + 1)
-        #number_elements_to_refine = math.floor(rho * len(mark_to_p_refine))
         mark_to_p_refine.sort(key=lambda x:x[1], reverse=True)
         for i in range(len(mark_to_p_refine)):
             if mark_to_p_refine[i][1] >= rho * np.max(self.errors):
@@ -295,7 +297,7 @@ class DoubleHpProblem(gym.Env):
         self.mesh.SetAttributes()
     
     def hpDeterministicPolicy(self):
-        thetaDeterministic = 0.05
+        thetaDeterministic = 0.85
         self.reset()
         #while self.k <= 1:
         while self.sum_of_dofs < self.dof_threshold:
@@ -304,13 +306,22 @@ class DoubleHpProblem(gym.Env):
             elements_to_h_refine = []
             elements_to_p_refine = []
             neighbor_table = self.mesh.ElementToElementTable()
+            element_error_list = []
+            #Attempt at getting percentile based methods.
+            for i in range(self.mesh.GetNE()):
+                element_error_list.append((i, self.errors[i]))
+            element_error_list.sort(key=lambda x:x[1], reverse=True)
+            cutoff_number = math.floor(thetaDeterministic * self.mesh.GetNE())
+            cutoff_error = element_error_list[cutoff_number][1]
+
             for i in range(self.mesh.GetNE()):
                 curr_verts = self.mesh.GetElementVertices(i)
                 element_touching_corner = False
                 threshold = thetaDeterministic * np.max(self.errors)
                 curr_error = self.errors[i]
 
-                if threshold < curr_error:
+                #if threshold < curr_error:
+                if cutoff_error <= curr_error:
                     for j in range(len(curr_verts)):
                         temp_arr = mfem.doubleArray(2)
                         coords = self.mesh.GetVertex(curr_verts[j])
