@@ -52,6 +52,7 @@ class DoubleHpProblem(gym.Env):
         self.error_threshold = kwargs.get('error_threshold',1e-3)
         self.dof_threshold = kwargs.get('dof_threshold',1e4)
         self.step_threshold = kwargs.get('step_threshold',10)
+        self.refinement_strategy = kwargs.get('refinement_strategy','max')
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
         order = kwargs.get('order',1)
@@ -207,21 +208,70 @@ class DoubleHpProblem(gym.Env):
         rho = theta * rho
         #theta = 0.6
         #rho = 0.4
+        """
         if theta < 0. :
-          theta = 0.
+          theta = 0.001
         if theta > 0.999 :
           theta = 0.999 
         if rho < 0. :
-          rho = 0.
+          rho = 0.001
         if rho > 0.999 :
           rho = 0.999 
+        """
         #if rho == 1:
         #    self.Prefine(theta)
-        self.Prefine(theta, rho)
-        self.Refine(theta)
+        #self.Prefine(theta, rho)
+        #self.Refine(theta)
+        if self.refinement_strategy == 'quantile':
+            h_refine_list, p_refine_list = self.MarkForRefinement(theta, rho)
+            self.PrefineQ(p_refine_list)
+            self.RefineQ(h_refine_list)
+        if self.refinement_strategy == 'max':
+            self.Prefine(theta, rho)
+            self.Refine(theta)
+
+    def MarkForRefinement(self, theta, rho):
+        mark_to_h_refine = []
+        mark_to_p_refine = []
+        element_error_list = []
+        for i in range(self.mesh.GetNE()):
+            element_error_list.append((i, self.errors[i]))
+        element_error_list.sort(key=lambda x:x[1])#, reverse=True)
+        cutoff_number_h = math.ceil(theta * (self.mesh.GetNE() - 1))
+        cutoff_error_h = element_error_list[cutoff_number_h][1]*(1 - 1e-4)
+        cutoff_number_p = math.ceil(rho * (self.mesh.GetNE() - 1))
+        cutoff_error_p = element_error_list[cutoff_number_p][1]*(1 - 1e-4)
+
+        if theta == 1:
+            cutoff_error_h =  np.max(self.errors)
+        if rho == 1:
+            cutoff_error_p = cutoff_error_h
+
+        for i in range(self.mesh.GetNE()):
+            curr_err = self.errors[i]
+            if curr_err > cutoff_error_h:
+                mark_to_h_refine.append(i)
+        for i in range(self.mesh.GetNE()):
+            if i not in mark_to_h_refine:
+                curr_err = self.errors[i]
+                if curr_err > cutoff_error_p:
+                    mark_to_p_refine.append(i)
+        return mark_to_h_refine, mark_to_p_refine
+
+
+    def RefineQ(self, h_refine_list):
+        elements_to_h_refine = intArray(h_refine_list)
+        self.mesh.GeneralRefinement(elements_to_h_refine)
+        self.fespace.Update(False)
+        self.x.Update()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+        # self.fespace.UpdatesFinished()
+        self.a.Update()
+        self.b.Update()
 
     def Refine(self, theta):
-        # self.refiner.Reset()
+        #self.refiner.Reset()
         self.refiner.SetTotalErrorFraction(theta)
         self.refiner.Apply(self.mesh)
         self.fespace.Update(False)
@@ -232,7 +282,8 @@ class DoubleHpProblem(gym.Env):
         self.a.Update()
         self.b.Update()
 
-    def Prefine(self, theta, rho):
+
+    def Prefine(self, theta, rho):   
         mark_to_p_refine = []
         threshold = theta * np.max(self.errors)
         for i in range(self.mesh.GetNE()):
@@ -240,11 +291,23 @@ class DoubleHpProblem(gym.Env):
                 mark_to_p_refine.append((i, self.errors[i]))
         mark_to_p_refine.sort(key=lambda x:x[1], reverse=True)
         for i in range(len(mark_to_p_refine)):
-            if mark_to_p_refine[i][1] >= rho * np.max(self.errors):
+            if mark_to_p_refine[i][1] > rho * np.max(self.errors):
                 current_element = mark_to_p_refine[i][0]
                 current_order = self.fespace.GetElementOrder(current_element)
                 self.fespace.SetElementOrder(current_element, current_order + 1)
         
+        self.fespace.Update(False)
+        self.x.Update()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+        # self.fespace.UpdatesFinished()
+        self.a.Update()
+        self.b.Update()
+
+    def PrefineQ(self, p_refine_list):
+        for j in range(len(p_refine_list)):
+            current_order = self.fespace.GetElementOrder(p_refine_list[j])
+            self.fespace.SetElementOrder(p_refine_list[j], current_order + 1)
         self.fespace.Update(False)
         self.x.Update()
         self.x.Assign(0.0)
@@ -266,6 +329,7 @@ class DoubleHpProblem(gym.Env):
         sol_sock.send_solution(self.mesh, orders)
         title = "step " + str(self.k)
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
+        sol_sock.send_text("valuerange 1.0 8.0 \n")
 
     def ComputeAverageOrder(self):
         total_els = self.fespace.GetNE()
@@ -320,8 +384,8 @@ class DoubleHpProblem(gym.Env):
                 threshold = thetaDeterministic * np.max(self.errors)
                 curr_error = self.errors[i]
 
-                #if threshold < curr_error:
-                if cutoff_error <= curr_error:
+                if threshold < curr_error:
+                #if cutoff_error <= curr_error:
                     for j in range(len(curr_verts)):
                         temp_arr = mfem.doubleArray(2)
                         coords = self.mesh.GetVertex(curr_verts[j])
@@ -338,7 +402,7 @@ class DoubleHpProblem(gym.Env):
                         neighbor_array.Assign(neighbor_row)
                         for l in range(row_size):
                             neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
-                            if neighbor_order <= self.fespace.GetElementOrder(i) and neighbor_array[l] not in elements_to_h_refine:
+                            if neighbor_order <= self.fespace.GetElementOrder(i):
                                 elements_to_p_refine.append(neighbor_array[l])
 
             p_refine_elements = np.unique(elements_to_p_refine).tolist()
@@ -354,7 +418,7 @@ class DoubleHpProblem(gym.Env):
             # self.fespace.UpdatesFinished()
             self.a.Update()
             self.b.Update()
-            
+
             elements_to_h_refine = intArray(elements_to_h_refine)
             self.mesh.GeneralRefinement(elements_to_h_refine)
             
@@ -400,4 +464,23 @@ socketstream orders_sock(vishost, visport);
 orders_sock.precision(8);
 orders_sock << "solution\n" << *mesh << orders << flush;
 sol_sock.send_solution(self.mesh, prolonged)
+"""
+
+
+"""
+        for i in range(self.mesh.GetNE()):
+            curr_err = self.errors[i]
+            if curr_err >= cutoff_error_h:
+                mark_to_h_refine.append(i)
+        for i in range(self.mesh.GetNE()):
+            if i not in mark_to_h_refine:
+                curr_err = self.errors[i]
+                if curr_err >= cutoff_error_p:
+                    mark_to_p_refine.append(i)
+        return mark_to_h_refine, mark_to_p_refine
+"""
+
+
+"""
+
 """

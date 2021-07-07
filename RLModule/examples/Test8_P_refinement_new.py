@@ -30,23 +30,24 @@ prob_config = {
     'mesh_name'         : 'l-shape-benchmark.mesh',
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
+    'refinement_strategy' : 'quantile', #'max', 'quantile'
     'order'             : 1,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
     # 'random_mesh'       : True
-    #'error_threshold' : 5e-2,  #default is 1e-3
-    #'dof_threshold' : 3e3 #default is 1e4
+    #'error_threshold' : 2e-2,  #default is 1e-3
+    #'dof_threshold' : 5e4 #default is 1e4
 }
 
-total_episodes = 4000
+total_episodes = 2000
 batch_size = 16
 nbatches = int(total_episodes/batch_size)
-checkpoint_period = 200
+checkpoint_period = 0
 
 config = ppo.DEFAULT_CONFIG.copy()
-config['train_batch_size'] = batch_size
-config['sgd_minibatch_size'] = batch_size
-config['rollout_fragment_length'] = batch_size
-config['num_workers'] = 3
+config['train_batch_size'] = 200
+config['sgd_minibatch_size'] = 20
+config['rollout_fragment_length'] = 50
+config['num_workers'] = 4
 config['num_gpus'] = 0
 config['gamma'] = 1.0
 config['lr'] = 1e-4
@@ -58,10 +59,20 @@ env = DoubleHpProblem(**prob_config)
 register_env("my_env", lambda config : DoubleHpProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
-env.hpDeterministicPolicy()
+#env.hpDeterministicPolicy()
 #env.render()
+#env.RenderHPmesh()
+"""
+env.reset()
+env.step(np.array([0.25, 1]))
+env.RenderHPmesh()
+env.step(np.array([1, 0.25]))
+env.RenderHPmesh()
+env.step(np.array([0.5, 0.25]))
 env.RenderHPmesh()
 """
+
+
 episode = 0
 checkpoint_episode = 0
 for n in range(nbatches):
@@ -128,7 +139,7 @@ while not done:
     #env.RenderMesh()
     env.RenderHPmesh()
 
-"""
+
 """
 costs = []
 rlcosts = []
