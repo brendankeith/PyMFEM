@@ -37,8 +37,8 @@ prob_config = {
     #'dof_threshold' : 3e3 #default is 1e4
 }
 
-total_episodes = 4000
-batch_size = 16
+total_episodes = 10000
+batch_size = 64
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 200
 
@@ -61,7 +61,7 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 env.hpDeterministicPolicy()
 #env.render()
 env.RenderHPmesh()
-"""
+# """
 episode = 0
 checkpoint_episode = 0
 for n in range(nbatches):
@@ -128,7 +128,7 @@ while not done:
     #env.RenderMesh()
     env.RenderHPmesh()
 
-"""
+# """
 """
 costs = []
 rlcosts = []
@@ -138,7 +138,7 @@ for i in range(1, nth):
     for j in range(0, 2):
         #action = np.array([i/(nth-1)])
         action = {'order' : j, 'space' : i / (nth-1)}
-        actions.append(action.item())
+        # actions.append(action.item())
         rlcosts.append(rlcost)
         env.reset()
         done = False
@@ -152,8 +152,8 @@ for i in range(1, nth):
             print("episode cost = ", episode_cost)
         costs.append(episode_cost)
 
-ax[1].plot(actions,costs,'-or',lw=1.3)
-ax[1].plot(actions,rlcosts,'-b',lw=1.3)
+ax[1].plot(costs,'-or',lw=1.3)
+ax[1].plot(rlcosts,'-b',lw=1.3)
 # ax.semilogy(cost,'r',lw=1.3)
 ax[1].set_ylabel("cost")
 ax[1].set_xlabel("Constant Actions (theta)")
