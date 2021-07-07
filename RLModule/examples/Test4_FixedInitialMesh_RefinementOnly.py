@@ -1,9 +1,7 @@
 """
     
     Script to train an optimal marking policy starting from a fixed initial mesh
-
     * In order for this to work with rllib, you need to have RLModule in your PYTHONPATH
-
 """
 
 import os
@@ -31,7 +29,9 @@ prob_config = {
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
     'order'             : 2,
-    'optimization_type' : 'step_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    'optimization_type' : 'error_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    'dof_threshold'     : 5e4,
+    'error_threshold'   : 1e-4,
     # 'random_mesh'       : True
 }
 
