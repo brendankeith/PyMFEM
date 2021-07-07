@@ -87,6 +87,7 @@ import mfem._ser.bilininteg
 import mfem._ser.fe_coll
 import mfem._ser.lininteg
 import mfem._ser.linearform
+import mfem._ser.nonlininteg
 import mfem._ser.element
 import mfem._ser.table
 import mfem._ser.hash
@@ -657,6 +658,11 @@ class FiniteElementSpace(object):
     Load = _swig_new_instance_method(_fespace.FiniteElementSpace_Load)
     __swig_destroy__ = _fespace.delete_FiniteElementSpace
 
+    def SaveGZ(self, file, precision=8):
+        r"""SaveGZ(FiniteElementSpace self, char const * file, int precision=8)"""
+        return _fespace.FiniteElementSpace_SaveGZ(self, file, precision)
+    SaveGZ = _swig_new_instance_method(_fespace.FiniteElementSpace_SaveGZ)
+
     def Save(self, *args):
         r"""
         Save(FiniteElementSpace self, std::ostream & out)
@@ -717,6 +723,11 @@ class QuadratureSpace(object):
         r"""GetElementIntRule(QuadratureSpace self, int idx) -> IntegrationRule"""
         return _fespace.QuadratureSpace_GetElementIntRule(self, idx)
     GetElementIntRule = _swig_new_instance_method(_fespace.QuadratureSpace_GetElementIntRule)
+
+    def SaveGZ(self, file, precision=8):
+        r"""SaveGZ(QuadratureSpace self, char const * file, int precision=8)"""
+        return _fespace.QuadratureSpace_SaveGZ(self, file, precision)
+    SaveGZ = _swig_new_instance_method(_fespace.QuadratureSpace_SaveGZ)
 
     def Save(self, *args):
         r"""

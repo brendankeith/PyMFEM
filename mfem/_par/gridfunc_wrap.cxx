@@ -8,6 +8,9 @@
  * interface file instead.
  * ----------------------------------------------------------------------------- */
 
+#define PY_SSIZE_T_CLEAN
+
+
 
 #ifndef SWIGPYTHON
 #define SWIGPYTHON
@@ -3297,12 +3300,11 @@ namespace Swig {
 #define SWIGTYPE_p_pri_t swig_types[197]
 #define SWIGTYPE_p_quad_t swig_types[198]
 #define SWIGTYPE_p_seg_t swig_types[199]
-#define SWIGTYPE_p_std__istream swig_types[200]
-#define SWIGTYPE_p_std__ostream swig_types[201]
-#define SWIGTYPE_p_tet_t swig_types[202]
-#define SWIGTYPE_p_tri_t swig_types[203]
-static swig_type_info *swig_types[205];
-static swig_module_info swig_module = {swig_types, 204, 0, 0, 0, 0};
+#define SWIGTYPE_p_std__ostream swig_types[200]
+#define SWIGTYPE_p_tet_t swig_types[201]
+#define SWIGTYPE_p_tri_t swig_types[202]
+static swig_type_info *swig_types[204];
+static swig_module_info swig_module = {swig_types, 203, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -3417,7 +3419,7 @@ namespace swig {
   #include "fem/gridfunc.hpp"
   #include "pycoefficient.hpp"
   #include "numpy/arrayobject.h"
-  #include "io_stream.hpp"        
+  #include "../common/io_stream.hpp"        
 
 
 #include <string>
@@ -3750,30 +3752,49 @@ SWIG_AsPtr_std_string (PyObject * obj, std::string **val)
   return SWIG_ERROR;
 }
 
-
-
-
-SWIGINTERN mfem::GridFunction *new_mfem_GridFunction__SWIG_6(mfem::Mesh *m,char const *grid_file){
-   mfem::GridFunction *gf;
-   std::ifstream igrid(grid_file);
-   if (!igrid) {
-      std::cerr << "\nCan not open grid function file: " << grid_file << '\n' << std::endl;
-      return NULL;
-   }
-   gf = new mfem::GridFunction(m, igrid);
-   return gf;
-}
-SWIGINTERN mfem::GridFunction *new_mfem_GridFunction__SWIG_7(mfem::FiniteElementSpace *fes,mfem::Vector const &v,int offset){
+SWIGINTERN mfem::GridFunction *new_mfem_GridFunction__SWIG_6(mfem::FiniteElementSpace *fes,mfem::Vector const &v,int offset){
    mfem::GridFunction *gf;   
    gf = new mfem::GridFunction(fes, v.GetData() + offset);
    return gf;
 }
+
+
+
 SWIGINTERN void mfem_GridFunction_SaveToFile(mfem::GridFunction const *self,char const *gf_file,int const precision){
         std::cerr << "\nWarning Deprecated : Use Save(filename) insteead of SaveToFile \n";  
 	std::ofstream mesh_ofs(gf_file);	
         mesh_ofs.precision(precision);
         self->Save(mesh_ofs);	
    }
+SWIGINTERN PyObject *mfem_GridFunction_WriteToStream(mfem::GridFunction const *self,PyObject *StringIO){
+    PyObject* module = PyImport_ImportModule("io");
+    if (!module){
+   	 PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+         return (PyObject *) NULL;
+    }      
+    PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+    if (!cls){
+   	 PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+         return (PyObject *) NULL;
+    }      
+    int check = PyObject_IsInstance(StringIO, cls);
+    Py_DECREF(module);
+    if (! check){
+ 	 PyErr_SetString(PyExc_TypeError, "First argument must be IOString");
+         return (PyObject *) NULL;
+    }
+    std::ostringstream stream;
+    self->Save(stream);
+    std::string str =  stream.str();
+    const char* s = str.c_str();
+    const int n = str.length();
+    PyObject *ret = PyObject_CallMethod(StringIO, "write", "s#", s, static_cast<Py_ssize_t>(n));
+    if (PyErr_Occurred()) {
+       PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+       return (PyObject *) NULL;
+    }
+    return ret;      
+}
 SWIGINTERN mfem::GridFunction &mfem_GridFunction_iadd(mfem::GridFunction *self,mfem::GridFunction &c){
       *self += c;
       return *self;
@@ -3805,6 +3826,17 @@ SWIGINTERN void mfem_GridFunction_Save__SWIG_1(mfem::GridFunction *self,char con
   self -> Save(ofile);
   ofile.close();
   }
+SWIGINTERN void mfem_GridFunction_SaveGZ(mfem::GridFunction *self,char const *file,int precision=8){
+  mfem::ofgzstream *ofile = new mfem::ofgzstream(file, true);
+  if (!ofile)
+     {
+        std::cerr << "\nCan not produce output file: " << file << '\n' << std::endl;
+        return;
+      }
+  ofile ->precision(precision);  
+  self -> Save(*ofile);
+  delete ofile;
+  }
 
 SWIGINTERNINLINE PyObject*
   SWIG_From_bool  (bool value)
@@ -3822,6 +3854,17 @@ SWIGINTERN void mfem_QuadratureFunction_Save__SWIG_1(mfem::QuadratureFunction *s
   ofile.precision(precision);  
   self -> Save(ofile);
   ofile.close();
+  }
+SWIGINTERN void mfem_QuadratureFunction_SaveGZ(mfem::QuadratureFunction *self,char const *file,int precision=8){
+  mfem::ofgzstream *ofile = new mfem::ofgzstream(file, true);
+  if (!ofile)
+     {
+        std::cerr << "\nCan not produce output file: " << file << '\n' << std::endl;
+        return;
+      }
+  ofile ->precision(precision);  
+  self -> Save(*ofile);
+  delete ofile;
   }
 
 
@@ -3846,6 +3889,11 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_0(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3877,6 +3925,11 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_1(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3905,6 +3958,11 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_2(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3941,6 +3999,11 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_3(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -3955,8 +4018,11 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_4(PyObject *SWIGUNUSEDPARM(sel
   std::istream *arg2 = 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
+  PyMFEM::wFILE *temp2 = 0 ;
+  std::ifstream in_txt2 ;
+  mfem::ifgzstream *in_gz2 = 0 ;
+  std::istringstream *stream2 = 0 ;
+  Py_ssize_t len2 = 0 ;
   mfem::GridFunction *result = 0 ;
   
   if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
@@ -3965,14 +4031,70 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_4(PyObject *SWIGUNUSEDPARM(sel
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "new_GridFunction" "', argument " "1"" of type '" "mfem::Mesh *""'"); 
   }
   arg1 = reinterpret_cast< mfem::Mesh * >(argp1);
-  res2 = SWIG_ConvertPtr(swig_obj[1], &argp2, SWIGTYPE_p_std__istream,  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "new_GridFunction" "', argument " "2"" of type '" "std::istream &""'"); 
+  {
+    //  PyMFEM::wFILE or string argument or StringIO
+    if (SWIG_ConvertPtr(swig_obj[1], (void **) &temp2, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
+      if (!PyString_Check(swig_obj[1]) && !PyUnicode_Check(swig_obj[1])) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(swig_obj[1], cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        
+        PyObject *input_str = PyObject_CallMethod(swig_obj[1], "getvalue", NULL);
+        if (PyErr_Occurred()) {
+          PyErr_SetString(PyExc_RuntimeError, "Can not read from StringIO");
+          return NULL;
+        }
+        
+        char *buf = nullptr;
+        PyObject *str = PyUnicode_AsUTF8String(input_str);	 
+        PyBytes_AsStringAndSize(str, &buf, &len2);
+        stream2 = new std::istringstream(buf);
+        Py_DECREF(str);
+        Py_DECREF(input_str);	 
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(swig_obj[1], "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp2 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);
+      }
+    }
+    if (stream2 == 0){
+      /*
+            if (temp2->isGZ()){
+        	 in_gz2 = new mfem::ifgzstream(temp2->getFilename());
+               arg2 = in_gz2;
+            } else {
+        	 in_txt2.open(temp2->getFilename(), std::ifstream::in);
+               in_txt2.precision(temp2->getPrecision());
+               arg2 = &in_txt2;
+            }
+           */
+      /* this will auto-detect the input file type */
+      in_gz2 = new mfem::ifgzstream(temp2->getFilename());
+      arg2 = in_gz2;
+      
+      if (temp2->isTemporary()){
+        delete temp2;
+      }
+    } else {
+      arg2 = stream2;
+    }
   }
-  if (!argp2) {
-    SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "new_GridFunction" "', argument " "2"" of type '" "std::istream &""'"); 
-  }
-  arg2 = reinterpret_cast< std::istream * >(argp2);
   {
     try {
       result = (mfem::GridFunction *)new mfem::GridFunction(arg1,*arg2); 
@@ -3980,10 +4102,35 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_4(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
+  {
+    if (!stream2) {
+      if (temp2) {
+        in_txt2.close();
+      }
+      if (in_gz2){
+        delete in_gz2;
+      }
+    }  
+  }
   return resultobj;
 fail:
+  {
+    if (!stream2) {
+      if (temp2) {
+        in_txt2.close();
+      }
+      if (in_gz2){
+        delete in_gz2;
+      }
+    }  
+  }
   return NULL;
 }
 
@@ -4023,6 +4170,11 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_5(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -4062,6 +4214,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_Assign__SWIG_0(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -4102,6 +4259,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_MakeOwner(PyObject *SWIGUNUSEDPARM(self)
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4132,6 +4294,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_OwnFEC(PyObject *SWIGUNUSEDPARM(self), P
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__FiniteElementCollection, 0 |  0 );
   return resultobj;
@@ -4162,6 +4329,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_VectorDim(PyObject *SWIGUNUSEDPARM(self)
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -4190,6 +4362,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetTrueVector__SWIG_0(PyObject *SWIGUNUS
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__Vector, 0 |  0 );
   return resultobj;
@@ -4218,6 +4395,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetTrueVector__SWIG_1(PyObject *SWIGUNUS
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__Vector, 0 |  0 );
   return resultobj;
@@ -4297,6 +4479,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetTrueDofs(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4326,6 +4513,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_SetTrueVector(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4369,6 +4561,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_SetFromTrueDofs(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4398,6 +4595,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_SetFromTrueVector(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4452,6 +4654,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetNodalValues__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4507,6 +4714,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetValue__SWIG_0(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -4563,6 +4775,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorValue__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4628,6 +4845,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetValues__SWIG_0(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4704,6 +4926,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetValues__SWIG_1(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4771,6 +4998,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorValues__SWIG_0(PyObject *SWIGUN
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -4840,6 +5072,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetValue__SWIG_1(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -5003,6 +5240,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorValue__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -5159,6 +5401,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetValues__SWIG_2(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -5379,6 +5626,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorValues__SWIG_1(PyObject *SWIGUN
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -5555,6 +5807,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetFaceValues(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -5639,6 +5896,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetFaceVectorValues(PyObject *SWIGUNUSED
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -5704,6 +5966,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetLaplacians__SWIG_0(PyObject *SWIGUNUS
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -5780,6 +6047,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetLaplacians__SWIG_1(PyObject *SWIGUNUS
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -5950,6 +6222,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetHessians__SWIG_0(PyObject *SWIGUNUSED
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6026,6 +6303,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetHessians__SWIG_1(PyObject *SWIGUNUSED
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6174,6 +6456,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetValuesFrom(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6217,6 +6504,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetBdrValuesFrom(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6302,6 +6594,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorFieldValues(PyObject *SWIGUNUSE
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6331,6 +6628,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ReorderByNodes(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6378,6 +6680,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetNodalValues__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6511,6 +6818,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorFieldNodalValues(PyObject *SWIG
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6564,6 +6876,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectVectorFieldOn(PyObject *SWIGUNUSE
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6623,6 +6940,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetDerivative(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6667,6 +6989,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetDivergence(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -6722,6 +7049,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetCurl(PyObject *SWIGUNUSEDPARM(self), 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6777,6 +7109,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetGradient(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6837,6 +7174,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetGradients__SWIG_0(PyObject *SWIGUNUSE
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -6893,6 +7235,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetGradients__SWIG_1(PyObject *SWIGUNUSE
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7017,6 +7364,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetVectorGradient(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7060,6 +7412,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_GetElementAverages(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7127,6 +7484,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ImposeBounds__SWIG_0(PyObject *SWIGUNUSE
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7192,6 +7554,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ImposeBounds__SWIG_1(PyObject *SWIGUNUSE
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7311,6 +7678,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_RestrictConforming(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7354,6 +7726,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectGridFunction(PyObject *SWIGUNUSED
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7392,6 +7769,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectCoefficient__SWIG_0(PyObject *SWI
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7450,6 +7832,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectCoefficient__SWIG_1(PyObject *SWI
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7488,6 +7875,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectCoefficient__SWIG_2(PyObject *SWI
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7537,6 +7929,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectCoefficient__SWIG_3(PyObject *SWI
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7572,6 +7969,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectCoefficient__SWIG_4(PyObject *SWI
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7724,6 +8126,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectDiscCoefficient__SWIG_1(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7770,6 +8177,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectDiscCoefficient__SWIG_2(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7816,6 +8228,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectDiscCoefficient__SWIG_3(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7938,6 +8355,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectBdrCoefficient__SWIG_0(PyObject *
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -7987,6 +8409,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectBdrCoefficient__SWIG_1(PyObject *
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -8033,6 +8460,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectBdrCoefficient__SWIG_2(PyObject *
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -8164,6 +8596,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectBdrCoefficientNormal(PyObject *SW
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -8219,6 +8656,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ProjectBdrCoefficientTangent(PyObject *S
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -8280,6 +8722,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeL2Error__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8338,6 +8785,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeL2Error__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8409,6 +8861,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeL2Error__SWIG_2(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8566,6 +9023,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeGradError(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8630,6 +9092,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeCurlError(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8694,6 +9161,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeDivError(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8776,6 +9248,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeDGFaceJumpError(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8843,6 +9320,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeH1Error__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -8909,6 +9391,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeH1Error__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9067,6 +9554,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeHDivError(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9140,6 +9632,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeHCurlError(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9201,6 +9698,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeMaxError__SWIG_0(PyObject *SWIGUN
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9259,6 +9761,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeMaxError__SWIG_1(PyObject *SWIGUN
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9320,6 +9827,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeMaxError__SWIG_2(PyObject *SWIGUN
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9466,6 +9978,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeL1Error__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9558,6 +10075,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeW11Error(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9619,6 +10141,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeL1Error__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9760,6 +10287,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeLpError__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -9849,6 +10381,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementLpErrors__SWIG_0(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -9920,6 +10457,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementL1Errors__SWIG_0(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -9991,6 +10533,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementL2Errors__SWIG_0(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10062,6 +10609,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementMaxErrors__SWIG_0(PyObject
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10151,6 +10703,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeLpError__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -10348,6 +10905,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementLpErrors__SWIG_1(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10527,6 +11089,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementL1Errors__SWIG_1(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10670,6 +11237,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementL2Errors__SWIG_1(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10813,6 +11385,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeElementMaxErrors__SWIG_1(PyObject
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10961,6 +11538,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_ComputeFlux(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -10997,6 +11579,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_Assign__SWIG_1(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -11036,6 +11623,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_Assign__SWIG_2(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -11125,6 +11717,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_Update(PyObject *SWIGUNUSEDPARM(self), P
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -11153,6 +11750,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_FESpace__SWIG_0(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__FiniteElementSpace, 0 |  0 );
   return resultobj;
@@ -11181,6 +11783,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_FESpace__SWIG_1(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__FiniteElementSpace, 0 |  0 );
   return resultobj;
@@ -11257,6 +11864,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_SetSpace(PyObject *SWIGUNUSEDPARM(self),
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -11413,6 +12025,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_MakeRef__SWIG_1(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -11466,6 +12083,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_MakeRef__SWIG_2(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -11635,6 +12257,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_MakeTRef__SWIG_0(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -11688,6 +12315,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_MakeTRef__SWIG_1(PyObject *SWIGUNUSEDPAR
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -11769,7 +12401,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_Save__SWIG_0(PyObject *SWIGUNUSEDPARM(se
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyMFEM::wFILE *temp2 = 0 ;
-  std::ofstream out2 ;
+  std::ofstream out_txt2 ;
+  mfem::ofgzstream *out_gz2 = 0 ;
+  PyObject *string_io2 = 0 ;
+  std::ostringstream *stream2 = 0 ;
+  PyObject *ret2 = 0 ;
   
   if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(swig_obj[0], &argp1,SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
@@ -11778,18 +12414,53 @@ SWIGINTERN PyObject *_wrap_GridFunction_Save__SWIG_0(PyObject *SWIGUNUSEDPARM(se
   }
   arg1 = reinterpret_cast< mfem::GridFunction * >(argp1);
   {
+    //  PyMFEM::wFILE or string argument or StringIO
     if (SWIG_ConvertPtr(swig_obj[1], (void **) &temp2, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
-      SWIG_exception(SWIG_ValueError,"io_stream object is expected.");      
-      return NULL;
-    }  
-    
-    if (temp2->isSTDOUT() == 1) {
-      arg2 = &std::cout;
+      if (!PyString_Check(swig_obj[1]) && !PyUnicode_Check(swig_obj[1])) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(swig_obj[1], cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        string_io2=swig_obj[1];
+        stream2 = new std::ostringstream();
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(swig_obj[1], "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp2 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);	 
+      }
     }
-    else {
-      out2.open(temp2->getFilename());
-      out2.precision(temp2->getPrecision());
-      arg2 = &out2;
+    
+    if (stream2 == 0){
+      if (temp2->isSTDOUT() == 1) {
+        arg2 = &std::cout;
+      } else if (temp2->isGZ()){
+        out_gz2 = new mfem::ofgzstream(temp2->getFilename(), true);
+        arg2 = out_gz2;	     
+      } else {
+        out_txt2.open(temp2->getFilename());
+        out_txt2.precision(temp2->getPrecision());
+        arg2 = &out_txt2;
+      }
+      if (temp2->isTemporary()){
+        delete temp2;
+      }
+    } else {
+      arg2 = stream2;
     }
   }
   {
@@ -11799,21 +12470,56 @@ SWIGINTERN PyObject *_wrap_GridFunction_Save__SWIG_0(PyObject *SWIGUNUSEDPARM(se
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (stream2) {
+      std::string str =  stream2->str();
+      const char* s = str.c_str();
+      const int n = str.length();
+      ret2 = PyObject_CallMethod(string_io2, "write", "s#",
+        s, static_cast<Py_ssize_t>(n));
+      if (PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+        return NULL;
+      }
+      delete stream2;
+      Py_XDECREF(resultobj);   /* Blow away any previous result */
+      resultobj = ret2;    
+    }
+  }
+  {
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
   return resultobj;
 fail:
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
@@ -11830,7 +12536,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveVTK(PyObject *SWIGUNUSEDPARM(self), 
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyMFEM::wFILE *temp2 = 0 ;
-  std::ofstream out2 ;
+  std::ofstream out_txt2 ;
+  mfem::ofgzstream *out_gz2 = 0 ;
+  PyObject *string_io2 = 0 ;
+  std::ostringstream *stream2 = 0 ;
+  PyObject *ret2 = 0 ;
   int res3 = SWIG_OLDOBJ ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
@@ -11847,18 +12557,53 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveVTK(PyObject *SWIGUNUSEDPARM(self), 
   }
   arg1 = reinterpret_cast< mfem::GridFunction * >(argp1);
   {
+    //  PyMFEM::wFILE or string argument or StringIO
     if (SWIG_ConvertPtr(obj1, (void **) &temp2, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
-      SWIG_exception(SWIG_ValueError,"io_stream object is expected.");      
-      return NULL;
-    }  
-    
-    if (temp2->isSTDOUT() == 1) {
-      arg2 = &std::cout;
+      if (!PyString_Check(obj1) && !PyUnicode_Check(obj1)) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(obj1, cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        string_io2=obj1;
+        stream2 = new std::ostringstream();
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(obj1, "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp2 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);	 
+      }
     }
-    else {
-      out2.open(temp2->getFilename());
-      out2.precision(temp2->getPrecision());
-      arg2 = &out2;
+    
+    if (stream2 == 0){
+      if (temp2->isSTDOUT() == 1) {
+        arg2 = &std::cout;
+      } else if (temp2->isGZ()){
+        out_gz2 = new mfem::ofgzstream(temp2->getFilename(), true);
+        arg2 = out_gz2;	     
+      } else {
+        out_txt2.open(temp2->getFilename());
+        out_txt2.precision(temp2->getPrecision());
+        arg2 = &out_txt2;
+      }
+      if (temp2->isTemporary()){
+        delete temp2;
+      }
+    } else {
+      arg2 = stream2;
     }
   }
   {
@@ -11885,12 +12630,40 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveVTK(PyObject *SWIGUNUSEDPARM(self), 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (stream2) {
+      std::string str =  stream2->str();
+      const char* s = str.c_str();
+      const int n = str.length();
+      ret2 = PyObject_CallMethod(string_io2, "write", "s#",
+        s, static_cast<Py_ssize_t>(n));
+      if (PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+        return NULL;
+      }
+      delete stream2;
+      Py_XDECREF(resultobj);   /* Blow away any previous result */
+      resultobj = ret2;    
+    }
+  }
+  {
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
@@ -11898,9 +12671,16 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveVTK(PyObject *SWIGUNUSEDPARM(self), 
   return resultobj;
 fail:
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
@@ -11917,7 +12697,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveSTL(PyObject *SWIGUNUSEDPARM(self), 
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyMFEM::wFILE *temp2 = 0 ;
-  std::ofstream out2 ;
+  std::ofstream out_txt2 ;
+  mfem::ofgzstream *out_gz2 = 0 ;
+  PyObject *string_io2 = 0 ;
+  std::ostringstream *stream2 = 0 ;
+  PyObject *ret2 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -11932,18 +12716,53 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveSTL(PyObject *SWIGUNUSEDPARM(self), 
   }
   arg1 = reinterpret_cast< mfem::GridFunction * >(argp1);
   {
+    //  PyMFEM::wFILE or string argument or StringIO
     if (SWIG_ConvertPtr(obj1, (void **) &temp2, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
-      SWIG_exception(SWIG_ValueError,"io_stream object is expected.");      
-      return NULL;
-    }  
-    
-    if (temp2->isSTDOUT() == 1) {
-      arg2 = &std::cout;
+      if (!PyString_Check(obj1) && !PyUnicode_Check(obj1)) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(obj1, cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        string_io2=obj1;
+        stream2 = new std::ostringstream();
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(obj1, "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp2 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);	 
+      }
     }
-    else {
-      out2.open(temp2->getFilename());
-      out2.precision(temp2->getPrecision());
-      arg2 = &out2;
+    
+    if (stream2 == 0){
+      if (temp2->isSTDOUT() == 1) {
+        arg2 = &std::cout;
+      } else if (temp2->isGZ()){
+        out_gz2 = new mfem::ofgzstream(temp2->getFilename(), true);
+        arg2 = out_gz2;	     
+      } else {
+        out_txt2.open(temp2->getFilename());
+        out_txt2.precision(temp2->getPrecision());
+        arg2 = &out_txt2;
+      }
+      if (temp2->isTemporary()){
+        delete temp2;
+      }
+    } else {
+      arg2 = stream2;
     }
   }
   if (obj2) {
@@ -11961,21 +12780,56 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveSTL(PyObject *SWIGUNUSEDPARM(self), 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (stream2) {
+      std::string str =  stream2->str();
+      const char* s = str.c_str();
+      const int n = str.length();
+      ret2 = PyObject_CallMethod(string_io2, "write", "s#",
+        s, static_cast<Py_ssize_t>(n));
+      if (PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+        return NULL;
+      }
+      delete stream2;
+      Py_XDECREF(resultobj);   /* Blow away any previous result */
+      resultobj = ret2;    
+    }
+  }
+  {
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
   return resultobj;
 fail:
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
@@ -12004,6 +12858,11 @@ SWIGINTERN PyObject *_wrap_delete_GridFunction(PyObject *SWIGUNUSEDPARM(self), P
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -12013,45 +12872,6 @@ fail:
 
 
 SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_6(PyObject *SWIGUNUSEDPARM(self), Py_ssize_t nobjs, PyObject **swig_obj) {
-  PyObject *resultobj = 0;
-  mfem::Mesh *arg1 = (mfem::Mesh *) 0 ;
-  char *arg2 = (char *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int res2 ;
-  char *buf2 = 0 ;
-  int alloc2 = 0 ;
-  mfem::GridFunction *result = 0 ;
-  
-  if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(swig_obj[0], &argp1,SWIGTYPE_p_mfem__Mesh, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "new_GridFunction" "', argument " "1"" of type '" "mfem::Mesh *""'"); 
-  }
-  arg1 = reinterpret_cast< mfem::Mesh * >(argp1);
-  res2 = SWIG_AsCharPtrAndSize(swig_obj[1], &buf2, NULL, &alloc2);
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "new_GridFunction" "', argument " "2"" of type '" "char const *""'");
-  }
-  arg2 = reinterpret_cast< char * >(buf2);
-  {
-    try {
-      result = (mfem::GridFunction *)new_mfem_GridFunction__SWIG_6(arg1,(char const *)arg2); 
-    }
-    catch (Swig::DirectorException &e) {
-      SWIG_fail; 
-    }    
-  }
-  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
-  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
-  return resultobj;
-fail:
-  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_7(PyObject *SWIGUNUSEDPARM(self), Py_ssize_t nobjs, PyObject **swig_obj) {
   PyObject *resultobj = 0;
   mfem::FiniteElementSpace *arg1 = (mfem::FiniteElementSpace *) 0 ;
   mfem::Vector *arg2 = 0 ;
@@ -12084,11 +12904,16 @@ SWIGINTERN PyObject *_wrap_new_GridFunction__SWIG_7(PyObject *SWIGUNUSEDPARM(sel
   }
   {
     try {
-      result = (mfem::GridFunction *)new_mfem_GridFunction__SWIG_7(arg1,(mfem::Vector const &)*arg2,arg3); 
+      result = (mfem::GridFunction *)new_mfem_GridFunction__SWIG_6(arg1,(mfem::Vector const &)*arg2,arg3); 
     }
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -12145,24 +12970,36 @@ SWIGINTERN PyObject *_wrap_new_GridFunction(PyObject *self, PyObject *args) {
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_mfem__Mesh, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
-      void *vptr = 0;
-      int res = SWIG_ConvertPtr(argv[1], &vptr, SWIGTYPE_p_std__istream, SWIG_POINTER_NO_NULL);
-      _v = SWIG_CheckState(res);
+      {
+        void *ptr;
+        //std::string *ptr2 = (std::string *)0;
+        if (SWIG_ConvertPtr(argv[1], (void **) &ptr, SWIGTYPE_p_PyMFEM__wFILE, 0 |0) == -1) {
+          PyErr_Clear();
+          if (!PyString_Check(argv[1]) && !PyUnicode_Check(argv[1])) {
+            // not string
+            _v = 1;	   	
+            PyObject* module = PyImport_ImportModule("io");
+            if (!module){
+              _v = 0;	   
+            }      
+            PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+            if (!cls){
+              _v = 0;	   	   
+            }      
+            int check = PyObject_IsInstance(argv[1], cls);
+            Py_DECREF(module);
+            if (! check){
+              _v = 0;	   	   	   
+            }
+          } else {
+            _v = 1;
+          }
+        } else {
+          _v = 1;
+        }
+      }
       if (_v) {
         return _wrap_new_GridFunction__SWIG_4(self, argc, argv);
-      }
-    }
-  }
-  if (argc == 2) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_mfem__Mesh, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      int res = SWIG_AsCharPtrAndSize(argv[1], 0, NULL, 0);
-      _v = SWIG_CheckState(res);
-      if (_v) {
-        return _wrap_new_GridFunction__SWIG_6(self, argc, argv);
       }
     }
   }
@@ -12208,7 +13045,7 @@ SWIGINTERN PyObject *_wrap_new_GridFunction(PyObject *self, PyObject *args) {
           }
         }
         if (_v) {
-          return _wrap_new_GridFunction__SWIG_7(self, argc, argv);
+          return _wrap_new_GridFunction__SWIG_6(self, argc, argv);
         }
       }
     }
@@ -12223,7 +13060,6 @@ fail:
     "    mfem::GridFunction::GridFunction(mfem::FiniteElementSpace *,double *)\n"
     "    mfem::GridFunction::GridFunction(mfem::Mesh *,std::istream &)\n"
     "    mfem::GridFunction::GridFunction(mfem::Mesh *,mfem::GridFunction *[],int)\n"
-    "    mfem::GridFunction::GridFunction(mfem::Mesh *,char const *)\n"
     "    mfem::GridFunction::GridFunction(mfem::FiniteElementSpace *,mfem::Vector const &,int)\n");
   return 0;
 }
@@ -12270,12 +13106,57 @@ SWIGINTERN PyObject *_wrap_GridFunction_SaveToFile(PyObject *SWIGUNUSEDPARM(self
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
   return resultobj;
 fail:
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_GridFunction_WriteToStream(PyObject *SWIGUNUSEDPARM(self), PyObject *args, PyObject *kwargs) {
+  PyObject *resultobj = 0;
+  mfem::GridFunction *arg1 = (mfem::GridFunction *) 0 ;
+  PyObject *arg2 = (PyObject *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  char * kwnames[] = {
+    (char *)"self",  (char *)"StringIO",  NULL 
+  };
+  PyObject *result = 0 ;
+  
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:GridFunction_WriteToStream", kwnames, &obj0, &obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "GridFunction_WriteToStream" "', argument " "1"" of type '" "mfem::GridFunction const *""'"); 
+  }
+  arg1 = reinterpret_cast< mfem::GridFunction * >(argp1);
+  arg2 = obj1;
+  {
+    try {
+      result = (PyObject *)mfem_GridFunction_WriteToStream((mfem::GridFunction const *)arg1,arg2); 
+    }
+    catch (Swig::DirectorException &e) {
+      SWIG_fail; 
+    }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
+  }
+  resultobj = result;
+  return resultobj;
+fail:
   return NULL;
 }
 
@@ -12316,6 +13197,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_iadd(PyObject *SWIGUNUSEDPARM(self), PyO
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -12355,6 +13241,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_isub__SWIG_0(PyObject *SWIGUNUSEDPARM(se
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -12391,6 +13282,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_isub__SWIG_1(PyObject *SWIGUNUSEDPARM(se
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -12479,6 +13375,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_imul(PyObject *SWIGUNUSEDPARM(self), PyO
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -12520,6 +13421,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_idiv(PyObject *SWIGUNUSEDPARM(self), PyO
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -12565,6 +13471,11 @@ SWIGINTERN PyObject *_wrap_GridFunction_Save__SWIG_1(PyObject *SWIGUNUSEDPARM(se
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
@@ -12617,11 +13528,30 @@ SWIGINTERN PyObject *_wrap_GridFunction_Save(PyObject *self, PyObject *args) {
     if (_v) {
       {
         void *ptr;
+        //std::string *ptr2 = (std::string *)0;
         if (SWIG_ConvertPtr(argv[1], (void **) &ptr, SWIGTYPE_p_PyMFEM__wFILE, 0 |0) == -1) {
           PyErr_Clear();
-          _v = 0;
+          if (!PyString_Check(argv[1]) && !PyUnicode_Check(argv[1])) {
+            // not string
+            _v = 1;	   	
+            PyObject* module = PyImport_ImportModule("io");
+            if (!module){
+              _v = 0;	   
+            }      
+            PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+            if (!cls){
+              _v = 0;	   	   
+            }      
+            int check = PyObject_IsInstance(argv[1], cls);
+            Py_DECREF(module);
+            if (! check){
+              _v = 0;	   	   	   
+            }
+          } else {
+            _v = 1;
+          }
         } else {
-          _v = 1;    
+          _v = 1;
         }
       }
       if (_v) {
@@ -12636,6 +13566,64 @@ fail:
     "    mfem::GridFunction::Save(std::ostream &) const\n"
     "    mfem::GridFunction::Save(char const *,int)\n");
   return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_GridFunction_SaveGZ(PyObject *SWIGUNUSEDPARM(self), PyObject *args, PyObject *kwargs) {
+  PyObject *resultobj = 0;
+  mfem::GridFunction *arg1 = (mfem::GridFunction *) 0 ;
+  char *arg2 = (char *) 0 ;
+  int arg3 = (int) 8 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 ;
+  char *buf2 = 0 ;
+  int alloc2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  char * kwnames[] = {
+    (char *)"self",  (char *)"file",  (char *)"precision",  NULL 
+  };
+  
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|O:GridFunction_SaveGZ", kwnames, &obj0, &obj1, &obj2)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "GridFunction_SaveGZ" "', argument " "1"" of type '" "mfem::GridFunction *""'"); 
+  }
+  arg1 = reinterpret_cast< mfem::GridFunction * >(argp1);
+  res2 = SWIG_AsCharPtrAndSize(obj1, &buf2, NULL, &alloc2);
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "GridFunction_SaveGZ" "', argument " "2"" of type '" "char const *""'");
+  }
+  arg2 = reinterpret_cast< char * >(buf2);
+  if (obj2) {
+    {
+      if ((PyArray_PyIntAsInt(obj2) == -1) && PyErr_Occurred()) {
+        SWIG_exception_fail(SWIG_TypeError, "Input must be integer");
+      };  
+      arg3 = PyArray_PyIntAsInt(obj2);
+    }
+  }
+  {
+    try {
+      mfem_GridFunction_SaveGZ(arg1,(char const *)arg2,arg3); 
+    }
+    catch (Swig::DirectorException &e) {
+      SWIG_fail; 
+    }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
+  }
+  resultobj = SWIG_Py_Void();
+  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return resultobj;
+fail:
+  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return NULL;
 }
 
 
@@ -12655,25 +13643,64 @@ SWIGINTERN PyObject *_wrap___lshift____SWIG_2(PyObject *SWIGUNUSEDPARM(self), Py
   std::ostream *arg1 = 0 ;
   mfem::GridFunction *arg2 = 0 ;
   PyMFEM::wFILE *temp1 = 0 ;
-  std::ofstream out1 ;
+  std::ofstream out_txt1 ;
+  mfem::ofgzstream *out_gz1 = 0 ;
+  PyObject *string_io1 = 0 ;
+  std::ostringstream *stream1 = 0 ;
+  PyObject *ret1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
   std::ostream *result = 0 ;
   
   if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
   {
+    //  PyMFEM::wFILE or string argument or StringIO
     if (SWIG_ConvertPtr(swig_obj[0], (void **) &temp1, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
-      SWIG_exception(SWIG_ValueError,"io_stream object is expected.");      
-      return NULL;
-    }  
-    
-    if (temp1->isSTDOUT() == 1) {
-      arg1 = &std::cout;
+      if (!PyString_Check(swig_obj[0]) && !PyUnicode_Check(swig_obj[0])) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(swig_obj[0], cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        string_io1=swig_obj[0];
+        stream1 = new std::ostringstream();
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(swig_obj[0], "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp1 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);	 
+      }
     }
-    else {
-      out1.open(temp1->getFilename());
-      out1.precision(temp1->getPrecision());
-      arg1 = &out1;
+    
+    if (stream1 == 0){
+      if (temp1->isSTDOUT() == 1) {
+        arg1 = &std::cout;
+      } else if (temp1->isGZ()){
+        out_gz1 = new mfem::ofgzstream(temp1->getFilename(), true);
+        arg1 = out_gz1;	     
+      } else {
+        out_txt1.open(temp1->getFilename());
+        out_txt1.precision(temp1->getPrecision());
+        arg1 = &out_txt1;
+      }
+      if (temp1->isTemporary()){
+        delete temp1;
+      }
+    } else {
+      arg1 = stream1;
     }
   }
   res2 = SWIG_ConvertPtr(swig_obj[1], &argp2, SWIGTYPE_p_mfem__GridFunction,  0  | 0);
@@ -12691,21 +13718,56 @@ SWIGINTERN PyObject *_wrap___lshift____SWIG_2(PyObject *SWIGUNUSEDPARM(self), Py
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_std__ostream, 0 |  0 );
   {
-    if (temp1) {
-      if (temp1->isSTDOUT() != 1) {
-        out1.close();
+    if (stream1) {
+      std::string str =  stream1->str();
+      const char* s = str.c_str();
+      const int n = str.length();
+      ret1 = PyObject_CallMethod(string_io1, "write", "s#",
+        s, static_cast<Py_ssize_t>(n));
+      if (PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+        return NULL;
+      }
+      delete stream1;
+      Py_XDECREF(resultobj);   /* Blow away any previous result */
+      resultobj = ret1;    
+    }
+  }
+  {
+    if (!stream1) {
+      if (temp1) {
+        if (temp1->isSTDOUT() != 1) {
+          if (out_txt1.is_open()){
+            out_txt1.close();
+          }
+          if (out_gz1){
+            delete out_gz1;
+          }
+        }
       }
     }
   }
   return resultobj;
 fail:
   {
-    if (temp1) {
-      if (temp1->isSTDOUT() != 1) {
-        out1.close();
+    if (!stream1) {
+      if (temp1) {
+        if (temp1->isSTDOUT() != 1) {
+          if (out_txt1.is_open()){
+            out_txt1.close();
+          }
+          if (out_gz1){
+            delete out_gz1;
+          }
+        }
       }
     }
   }
@@ -12727,6 +13789,11 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_0(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__QuadratureFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -12758,6 +13825,11 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_1(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__QuadratureFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -12795,6 +13867,11 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_2(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__QuadratureFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -12840,6 +13917,11 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_3(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__QuadratureFunction, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -12854,8 +13936,11 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_4(PyObject *SWIGUNUSEDPA
   std::istream *arg2 = 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
+  PyMFEM::wFILE *temp2 = 0 ;
+  std::ifstream in_txt2 ;
+  mfem::ifgzstream *in_gz2 = 0 ;
+  std::istringstream *stream2 = 0 ;
+  Py_ssize_t len2 = 0 ;
   mfem::QuadratureFunction *result = 0 ;
   
   if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
@@ -12864,14 +13949,70 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_4(PyObject *SWIGUNUSEDPA
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "new_QuadratureFunction" "', argument " "1"" of type '" "mfem::Mesh *""'"); 
   }
   arg1 = reinterpret_cast< mfem::Mesh * >(argp1);
-  res2 = SWIG_ConvertPtr(swig_obj[1], &argp2, SWIGTYPE_p_std__istream,  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "new_QuadratureFunction" "', argument " "2"" of type '" "std::istream &""'"); 
+  {
+    //  PyMFEM::wFILE or string argument or StringIO
+    if (SWIG_ConvertPtr(swig_obj[1], (void **) &temp2, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
+      if (!PyString_Check(swig_obj[1]) && !PyUnicode_Check(swig_obj[1])) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(swig_obj[1], cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        
+        PyObject *input_str = PyObject_CallMethod(swig_obj[1], "getvalue", NULL);
+        if (PyErr_Occurred()) {
+          PyErr_SetString(PyExc_RuntimeError, "Can not read from StringIO");
+          return NULL;
+        }
+        
+        char *buf = nullptr;
+        PyObject *str = PyUnicode_AsUTF8String(input_str);	 
+        PyBytes_AsStringAndSize(str, &buf, &len2);
+        stream2 = new std::istringstream(buf);
+        Py_DECREF(str);
+        Py_DECREF(input_str);	 
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(swig_obj[1], "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp2 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);
+      }
+    }
+    if (stream2 == 0){
+      /*
+            if (temp2->isGZ()){
+        	 in_gz2 = new mfem::ifgzstream(temp2->getFilename());
+               arg2 = in_gz2;
+            } else {
+        	 in_txt2.open(temp2->getFilename(), std::ifstream::in);
+               in_txt2.precision(temp2->getPrecision());
+               arg2 = &in_txt2;
+            }
+           */
+      /* this will auto-detect the input file type */
+      in_gz2 = new mfem::ifgzstream(temp2->getFilename());
+      arg2 = in_gz2;
+      
+      if (temp2->isTemporary()){
+        delete temp2;
+      }
+    } else {
+      arg2 = stream2;
+    }
   }
-  if (!argp2) {
-    SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "new_QuadratureFunction" "', argument " "2"" of type '" "std::istream &""'"); 
-  }
-  arg2 = reinterpret_cast< std::istream * >(argp2);
   {
     try {
       result = (mfem::QuadratureFunction *)new mfem::QuadratureFunction(arg1,*arg2); 
@@ -12879,10 +14020,35 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction__SWIG_4(PyObject *SWIGUNUSEDPA
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__QuadratureFunction, SWIG_POINTER_NEW |  0 );
+  {
+    if (!stream2) {
+      if (temp2) {
+        in_txt2.close();
+      }
+      if (in_gz2){
+        delete in_gz2;
+      }
+    }  
+  }
   return resultobj;
 fail:
+  {
+    if (!stream2) {
+      if (temp2) {
+        in_txt2.close();
+      }
+      if (in_gz2){
+        delete in_gz2;
+      }
+    }  
+  }
   return NULL;
 }
 
@@ -12961,9 +14127,34 @@ SWIGINTERN PyObject *_wrap_new_QuadratureFunction(PyObject *self, PyObject *args
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_mfem__Mesh, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
-      void *vptr = 0;
-      int res = SWIG_ConvertPtr(argv[1], &vptr, SWIGTYPE_p_std__istream, SWIG_POINTER_NO_NULL);
-      _v = SWIG_CheckState(res);
+      {
+        void *ptr;
+        //std::string *ptr2 = (std::string *)0;
+        if (SWIG_ConvertPtr(argv[1], (void **) &ptr, SWIGTYPE_p_PyMFEM__wFILE, 0 |0) == -1) {
+          PyErr_Clear();
+          if (!PyString_Check(argv[1]) && !PyUnicode_Check(argv[1])) {
+            // not string
+            _v = 1;	   	
+            PyObject* module = PyImport_ImportModule("io");
+            if (!module){
+              _v = 0;	   
+            }      
+            PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+            if (!cls){
+              _v = 0;	   	   
+            }      
+            int check = PyObject_IsInstance(argv[1], cls);
+            Py_DECREF(module);
+            if (! check){
+              _v = 0;	   	   	   
+            }
+          } else {
+            _v = 1;
+          }
+        } else {
+          _v = 1;
+        }
+      }
       if (_v) {
         return _wrap_new_QuadratureFunction__SWIG_4(self, argc, argv);
       }
@@ -13003,6 +14194,11 @@ SWIGINTERN PyObject *_wrap_delete_QuadratureFunction(PyObject *SWIGUNUSEDPARM(se
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13033,6 +14229,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetSpace(PyObject *SWIGUNUSEDPARM(
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__QuadratureSpace, 0 |  0 );
   return resultobj;
@@ -13077,6 +14278,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_SetSpace__SWIG_0(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13129,6 +14335,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_SetSpace__SWIG_1(PyObject *SWIGUNU
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13236,6 +14447,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetVDim(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
@@ -13275,6 +14491,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_SetVDim(PyObject *SWIGUNUSEDPARM(s
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13305,6 +14526,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_OwnsSpace(PyObject *SWIGUNUSEDPARM
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_bool(static_cast< bool >(result));
   return resultobj;
@@ -13345,6 +14571,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_SetOwnsSpace(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13385,6 +14616,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementIntRule(PyObject *SWIGUN
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__IntegrationRule, 0 |  0 );
   return resultobj;
@@ -13430,6 +14666,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementValues__SWIG_0(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13475,6 +14716,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementValues__SWIG_1(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13527,6 +14773,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementValues__SWIG_2(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13579,6 +14830,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementValues__SWIG_3(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13624,6 +14880,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementValues__SWIG_4(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13669,6 +14930,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_GetElementValues__SWIG_5(PyObject 
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -13870,7 +15136,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_Save__SWIG_0(PyObject *SWIGUNUSEDP
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyMFEM::wFILE *temp2 = 0 ;
-  std::ofstream out2 ;
+  std::ofstream out_txt2 ;
+  mfem::ofgzstream *out_gz2 = 0 ;
+  PyObject *string_io2 = 0 ;
+  std::ostringstream *stream2 = 0 ;
+  PyObject *ret2 = 0 ;
   
   if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(swig_obj[0], &argp1,SWIGTYPE_p_mfem__QuadratureFunction, 0 |  0 );
@@ -13879,18 +15149,53 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_Save__SWIG_0(PyObject *SWIGUNUSEDP
   }
   arg1 = reinterpret_cast< mfem::QuadratureFunction * >(argp1);
   {
+    //  PyMFEM::wFILE or string argument or StringIO
     if (SWIG_ConvertPtr(swig_obj[1], (void **) &temp2, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
-      SWIG_exception(SWIG_ValueError,"io_stream object is expected.");      
-      return NULL;
-    }  
-    
-    if (temp2->isSTDOUT() == 1) {
-      arg2 = &std::cout;
+      if (!PyString_Check(swig_obj[1]) && !PyUnicode_Check(swig_obj[1])) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(swig_obj[1], cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        string_io2=swig_obj[1];
+        stream2 = new std::ostringstream();
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(swig_obj[1], "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp2 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);	 
+      }
     }
-    else {
-      out2.open(temp2->getFilename());
-      out2.precision(temp2->getPrecision());
-      arg2 = &out2;
+    
+    if (stream2 == 0){
+      if (temp2->isSTDOUT() == 1) {
+        arg2 = &std::cout;
+      } else if (temp2->isGZ()){
+        out_gz2 = new mfem::ofgzstream(temp2->getFilename(), true);
+        arg2 = out_gz2;	     
+      } else {
+        out_txt2.open(temp2->getFilename());
+        out_txt2.precision(temp2->getPrecision());
+        arg2 = &out_txt2;
+      }
+      if (temp2->isTemporary()){
+        delete temp2;
+      }
+    } else {
+      arg2 = stream2;
     }
   }
   {
@@ -13900,21 +15205,56 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_Save__SWIG_0(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (stream2) {
+      std::string str =  stream2->str();
+      const char* s = str.c_str();
+      const int n = str.length();
+      ret2 = PyObject_CallMethod(string_io2, "write", "s#",
+        s, static_cast<Py_ssize_t>(n));
+      if (PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+        return NULL;
+      }
+      delete stream2;
+      Py_XDECREF(resultobj);   /* Blow away any previous result */
+      resultobj = ret2;    
+    }
+  }
+  {
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
   return resultobj;
 fail:
   {
-    if (temp2) {
-      if (temp2->isSTDOUT() != 1) {
-        out2.close();
+    if (!stream2) {
+      if (temp2) {
+        if (temp2->isSTDOUT() != 1) {
+          if (out_txt2.is_open()){
+            out_txt2.close();
+          }
+          if (out_gz2){
+            delete out_gz2;
+          }
+        }
       }
     }
   }
@@ -13959,6 +15299,11 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_Save__SWIG_1(PyObject *SWIGUNUSEDP
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
@@ -14011,11 +15356,30 @@ SWIGINTERN PyObject *_wrap_QuadratureFunction_Save(PyObject *self, PyObject *arg
     if (_v) {
       {
         void *ptr;
+        //std::string *ptr2 = (std::string *)0;
         if (SWIG_ConvertPtr(argv[1], (void **) &ptr, SWIGTYPE_p_PyMFEM__wFILE, 0 |0) == -1) {
           PyErr_Clear();
-          _v = 0;
+          if (!PyString_Check(argv[1]) && !PyUnicode_Check(argv[1])) {
+            // not string
+            _v = 1;	   	
+            PyObject* module = PyImport_ImportModule("io");
+            if (!module){
+              _v = 0;	   
+            }      
+            PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+            if (!cls){
+              _v = 0;	   	   
+            }      
+            int check = PyObject_IsInstance(argv[1], cls);
+            Py_DECREF(module);
+            if (! check){
+              _v = 0;	   	   	   
+            }
+          } else {
+            _v = 1;
+          }
         } else {
-          _v = 1;    
+          _v = 1;
         }
       }
       if (_v) {
@@ -14030,6 +15394,64 @@ fail:
     "    mfem::QuadratureFunction::Save(std::ostream &) const\n"
     "    mfem::QuadratureFunction::Save(char const *,int)\n");
   return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_QuadratureFunction_SaveGZ(PyObject *SWIGUNUSEDPARM(self), PyObject *args, PyObject *kwargs) {
+  PyObject *resultobj = 0;
+  mfem::QuadratureFunction *arg1 = (mfem::QuadratureFunction *) 0 ;
+  char *arg2 = (char *) 0 ;
+  int arg3 = (int) 8 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 ;
+  char *buf2 = 0 ;
+  int alloc2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  char * kwnames[] = {
+    (char *)"self",  (char *)"file",  (char *)"precision",  NULL 
+  };
+  
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|O:QuadratureFunction_SaveGZ", kwnames, &obj0, &obj1, &obj2)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_mfem__QuadratureFunction, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "QuadratureFunction_SaveGZ" "', argument " "1"" of type '" "mfem::QuadratureFunction *""'"); 
+  }
+  arg1 = reinterpret_cast< mfem::QuadratureFunction * >(argp1);
+  res2 = SWIG_AsCharPtrAndSize(obj1, &buf2, NULL, &alloc2);
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "QuadratureFunction_SaveGZ" "', argument " "2"" of type '" "char const *""'");
+  }
+  arg2 = reinterpret_cast< char * >(buf2);
+  if (obj2) {
+    {
+      if ((PyArray_PyIntAsInt(obj2) == -1) && PyErr_Occurred()) {
+        SWIG_exception_fail(SWIG_TypeError, "Input must be integer");
+      };  
+      arg3 = PyArray_PyIntAsInt(obj2);
+    }
+  }
+  {
+    try {
+      mfem_QuadratureFunction_SaveGZ(arg1,(char const *)arg2,arg3); 
+    }
+    catch (Swig::DirectorException &e) {
+      SWIG_fail; 
+    }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
+  }
+  resultobj = SWIG_Py_Void();
+  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return resultobj;
+fail:
+  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return NULL;
 }
 
 
@@ -14049,25 +15471,64 @@ SWIGINTERN PyObject *_wrap___lshift____SWIG_3(PyObject *SWIGUNUSEDPARM(self), Py
   std::ostream *arg1 = 0 ;
   mfem::QuadratureFunction *arg2 = 0 ;
   PyMFEM::wFILE *temp1 = 0 ;
-  std::ofstream out1 ;
+  std::ofstream out_txt1 ;
+  mfem::ofgzstream *out_gz1 = 0 ;
+  PyObject *string_io1 = 0 ;
+  std::ostringstream *stream1 = 0 ;
+  PyObject *ret1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
   std::ostream *result = 0 ;
   
   if ((nobjs < 2) || (nobjs > 2)) SWIG_fail;
   {
+    //  PyMFEM::wFILE or string argument or StringIO
     if (SWIG_ConvertPtr(swig_obj[0], (void **) &temp1, SWIGTYPE_p_PyMFEM__wFILE, 0 | 0) == -1) {
-      SWIG_exception(SWIG_ValueError,"io_stream object is expected.");      
-      return NULL;
-    }  
-    
-    if (temp1->isSTDOUT() == 1) {
-      arg1 = &std::cout;
+      if (!PyString_Check(swig_obj[0]) && !PyUnicode_Check(swig_obj[0])) {
+        // not string, check if it is StringIO
+        PyObject* module = PyImport_ImportModule("io");
+        if (!module){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load io module");
+          return NULL;
+        }      
+        PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+        if (!cls){
+          PyErr_SetString(PyExc_RuntimeError, "Can not load StringIO");
+          return NULL;
+        }      
+        int check = PyObject_IsInstance(swig_obj[0], cls);
+        Py_DECREF(module);
+        if (! check){
+          SWIG_exception(SWIG_ValueError,"First argument must be string/wFILE/IOString");
+          return NULL;
+        }
+        string_io1=swig_obj[0];
+        stream1 = new std::ostringstream();
+      } else {
+        // if it is string, extract filename as char*
+        PyObject* str = PyUnicode_AsEncodedString(swig_obj[0], "utf-8", "~E~");	
+        const char* filename = PyBytes_AsString(str);
+        temp1 = new PyMFEM::wFILE(filename, 8, true);
+        Py_DECREF(str);	 
+      }
     }
-    else {
-      out1.open(temp1->getFilename());
-      out1.precision(temp1->getPrecision());
-      arg1 = &out1;
+    
+    if (stream1 == 0){
+      if (temp1->isSTDOUT() == 1) {
+        arg1 = &std::cout;
+      } else if (temp1->isGZ()){
+        out_gz1 = new mfem::ofgzstream(temp1->getFilename(), true);
+        arg1 = out_gz1;	     
+      } else {
+        out_txt1.open(temp1->getFilename());
+        out_txt1.precision(temp1->getPrecision());
+        arg1 = &out_txt1;
+      }
+      if (temp1->isTemporary()){
+        delete temp1;
+      }
+    } else {
+      arg1 = stream1;
     }
   }
   res2 = SWIG_ConvertPtr(swig_obj[1], &argp2, SWIGTYPE_p_mfem__QuadratureFunction,  0  | 0);
@@ -14085,21 +15546,56 @@ SWIGINTERN PyObject *_wrap___lshift____SWIG_3(PyObject *SWIGUNUSEDPARM(self), Py
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_std__ostream, 0 |  0 );
   {
-    if (temp1) {
-      if (temp1->isSTDOUT() != 1) {
-        out1.close();
+    if (stream1) {
+      std::string str =  stream1->str();
+      const char* s = str.c_str();
+      const int n = str.length();
+      ret1 = PyObject_CallMethod(string_io1, "write", "s#",
+        s, static_cast<Py_ssize_t>(n));
+      if (PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Error occured when writing IOString");
+        return NULL;
+      }
+      delete stream1;
+      Py_XDECREF(resultobj);   /* Blow away any previous result */
+      resultobj = ret1;    
+    }
+  }
+  {
+    if (!stream1) {
+      if (temp1) {
+        if (temp1->isSTDOUT() != 1) {
+          if (out_txt1.is_open()){
+            out_txt1.close();
+          }
+          if (out_gz1){
+            delete out_gz1;
+          }
+        }
       }
     }
   }
   return resultobj;
 fail:
   {
-    if (temp1) {
-      if (temp1->isSTDOUT() != 1) {
-        out1.close();
+    if (!stream1) {
+      if (temp1) {
+        if (temp1->isSTDOUT() != 1) {
+          if (out_txt1.is_open()){
+            out_txt1.close();
+          }
+          if (out_gz1){
+            delete out_gz1;
+          }
+        }
       }
     }
   }
@@ -14121,11 +15617,30 @@ SWIGINTERN PyObject *_wrap___lshift__(PyObject *self, PyObject *args) {
     int _v;
     {
       void *ptr;
+      //std::string *ptr2 = (std::string *)0;
       if (SWIG_ConvertPtr(argv[0], (void **) &ptr, SWIGTYPE_p_PyMFEM__wFILE, 0 |0) == -1) {
         PyErr_Clear();
-        _v = 0;
+        if (!PyString_Check(argv[0]) && !PyUnicode_Check(argv[0])) {
+          // not string
+          _v = 1;	   	
+          PyObject* module = PyImport_ImportModule("io");
+          if (!module){
+            _v = 0;	   
+          }      
+          PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+          if (!cls){
+            _v = 0;	   	   
+          }      
+          int check = PyObject_IsInstance(argv[0], cls);
+          Py_DECREF(module);
+          if (! check){
+            _v = 0;	   	   	   
+          }
+        } else {
+          _v = 1;
+        }
       } else {
-        _v = 1;    
+        _v = 1;
       }
     }
     if (_v) {
@@ -14140,11 +15655,30 @@ SWIGINTERN PyObject *_wrap___lshift__(PyObject *self, PyObject *args) {
     int _v;
     {
       void *ptr;
+      //std::string *ptr2 = (std::string *)0;
       if (SWIG_ConvertPtr(argv[0], (void **) &ptr, SWIGTYPE_p_PyMFEM__wFILE, 0 |0) == -1) {
         PyErr_Clear();
-        _v = 0;
+        if (!PyString_Check(argv[0]) && !PyUnicode_Check(argv[0])) {
+          // not string
+          _v = 1;	   	
+          PyObject* module = PyImport_ImportModule("io");
+          if (!module){
+            _v = 0;	   
+          }      
+          PyObject* cls = PyObject_GetAttrString(module, "StringIO");
+          if (!cls){
+            _v = 0;	   	   
+          }      
+          int check = PyObject_IsInstance(argv[0], cls);
+          Py_DECREF(module);
+          if (! check){
+            _v = 0;	   	   	   
+          }
+        } else {
+          _v = 1;
+        }
       } else {
-        _v = 1;    
+        _v = 1;
       }
     }
     if (_v) {
@@ -14257,6 +15791,11 @@ SWIGINTERN PyObject *_wrap_ZZErrorEstimator(PyObject *SWIGUNUSEDPARM(self), PyOb
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -14321,6 +15860,11 @@ SWIGINTERN PyObject *_wrap_ComputeElementLpDistance(PyObject *SWIGUNUSEDPARM(sel
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -14373,6 +15917,11 @@ SWIGINTERN PyObject *_wrap_new_ExtrudeCoefficient(PyObject *SWIGUNUSEDPARM(self)
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__ExtrudeCoefficient, SWIG_POINTER_NEW |  0 );
   return resultobj;
@@ -14429,6 +15978,11 @@ SWIGINTERN PyObject *_wrap_ExtrudeCoefficient_Eval(PyObject *SWIGUNUSEDPARM(self
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_From_double(static_cast< double >(result));
   return resultobj;
@@ -14458,6 +16012,11 @@ SWIGINTERN PyObject *_wrap_delete_ExtrudeCoefficient(PyObject *SWIGUNUSEDPARM(se
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_Py_Void();
   return resultobj;
@@ -14527,6 +16086,11 @@ SWIGINTERN PyObject *_wrap_Extrude1DGridFunction(PyObject *SWIGUNUSEDPARM(self),
     catch (Swig::DirectorException &e) {
       SWIG_fail; 
     }    
+    //catch (...){
+    //  SWIG_fail;
+    //}
+    //    catch (Swig::DirectorMethodException &e) { SWIG_fail; }
+    //    catch (std::exception &e) { SWIG_fail; }    
   }
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_mfem__GridFunction, 0 |  0 );
   return resultobj;
@@ -14698,10 +16262,10 @@ static PyMethodDef SwigMethods[] = {
 		"GridFunction(FiniteElementSpace f, double * data)\n"
 		"GridFunction(Mesh m, std::istream & input)\n"
 		"GridFunction(Mesh m, mfem::GridFunction *[] gf_array, int num_pieces)\n"
-		"GridFunction(Mesh m, char const * grid_file)\n"
 		"new_GridFunction(FiniteElementSpace fes, Vector v, int offset) -> GridFunction\n"
 		""},
 	 { "GridFunction_SaveToFile", (PyCFunction)(void(*)(void))_wrap_GridFunction_SaveToFile, METH_VARARGS|METH_KEYWORDS, "GridFunction_SaveToFile(GridFunction self, char const * gf_file, int const precision)"},
+	 { "GridFunction_WriteToStream", (PyCFunction)(void(*)(void))_wrap_GridFunction_WriteToStream, METH_VARARGS|METH_KEYWORDS, "GridFunction_WriteToStream(GridFunction self, PyObject * StringIO) -> PyObject *"},
 	 { "GridFunction_iadd", (PyCFunction)(void(*)(void))_wrap_GridFunction_iadd, METH_VARARGS|METH_KEYWORDS, "GridFunction_iadd(GridFunction self, GridFunction c) -> GridFunction"},
 	 { "GridFunction_isub", _wrap_GridFunction_isub, METH_VARARGS, "\n"
 		"GridFunction_isub(GridFunction self, GridFunction c) -> GridFunction\n"
@@ -14713,6 +16277,7 @@ static PyMethodDef SwigMethods[] = {
 		"GridFunction_Save(GridFunction self, std::ostream & out)\n"
 		"GridFunction_Save(GridFunction self, char const * file, int precision=8)\n"
 		""},
+	 { "GridFunction_SaveGZ", (PyCFunction)(void(*)(void))_wrap_GridFunction_SaveGZ, METH_VARARGS|METH_KEYWORDS, "GridFunction_SaveGZ(GridFunction self, char const * file, int precision=8)"},
 	 { "GridFunction_swigregister", GridFunction_swigregister, METH_O, NULL},
 	 { "GridFunction_swiginit", GridFunction_swiginit, METH_VARARGS, NULL},
 	 { "new_QuadratureFunction", _wrap_new_QuadratureFunction, METH_VARARGS, "\n"
@@ -14745,6 +16310,7 @@ static PyMethodDef SwigMethods[] = {
 		"QuadratureFunction_Save(QuadratureFunction self, std::ostream & out)\n"
 		"QuadratureFunction_Save(QuadratureFunction self, char const * file, int precision=8)\n"
 		""},
+	 { "QuadratureFunction_SaveGZ", (PyCFunction)(void(*)(void))_wrap_QuadratureFunction_SaveGZ, METH_VARARGS|METH_KEYWORDS, "QuadratureFunction_SaveGZ(QuadratureFunction self, char const * file, int precision=8)"},
 	 { "QuadratureFunction_swigregister", QuadratureFunction_swigregister, METH_O, NULL},
 	 { "QuadratureFunction_swiginit", QuadratureFunction_swiginit, METH_VARARGS, NULL},
 	 { "__lshift__", _wrap___lshift__, METH_VARARGS, "\n"
@@ -14927,10 +16493,10 @@ static PyMethodDef SwigMethods_proxydocs[] = {
 		"GridFunction(FiniteElementSpace f, double * data)\n"
 		"GridFunction(Mesh m, std::istream & input)\n"
 		"GridFunction(Mesh m, mfem::GridFunction *[] gf_array, int num_pieces)\n"
-		"GridFunction(Mesh m, char const * grid_file)\n"
 		"new_GridFunction(FiniteElementSpace fes, Vector v, int offset) -> GridFunction\n"
 		""},
 	 { "GridFunction_SaveToFile", (PyCFunction)(void(*)(void))_wrap_GridFunction_SaveToFile, METH_VARARGS|METH_KEYWORDS, "SaveToFile(GridFunction self, char const * gf_file, int const precision)"},
+	 { "GridFunction_WriteToStream", (PyCFunction)(void(*)(void))_wrap_GridFunction_WriteToStream, METH_VARARGS|METH_KEYWORDS, "WriteToStream(GridFunction self, PyObject * StringIO) -> PyObject *"},
 	 { "GridFunction_iadd", (PyCFunction)(void(*)(void))_wrap_GridFunction_iadd, METH_VARARGS|METH_KEYWORDS, "iadd(GridFunction self, GridFunction c) -> GridFunction"},
 	 { "GridFunction_isub", _wrap_GridFunction_isub, METH_VARARGS, "\n"
 		"isub(GridFunction self, GridFunction c) -> GridFunction\n"
@@ -14942,6 +16508,7 @@ static PyMethodDef SwigMethods_proxydocs[] = {
 		"Save(GridFunction self, std::ostream & out)\n"
 		"Save(GridFunction self, char const * file, int precision=8)\n"
 		""},
+	 { "GridFunction_SaveGZ", (PyCFunction)(void(*)(void))_wrap_GridFunction_SaveGZ, METH_VARARGS|METH_KEYWORDS, "SaveGZ(GridFunction self, char const * file, int precision=8)"},
 	 { "GridFunction_swigregister", GridFunction_swigregister, METH_O, NULL},
 	 { "GridFunction_swiginit", GridFunction_swiginit, METH_VARARGS, NULL},
 	 { "new_QuadratureFunction", _wrap_new_QuadratureFunction, METH_VARARGS, "\n"
@@ -14974,6 +16541,7 @@ static PyMethodDef SwigMethods_proxydocs[] = {
 		"Save(QuadratureFunction self, std::ostream & out)\n"
 		"Save(QuadratureFunction self, char const * file, int precision=8)\n"
 		""},
+	 { "QuadratureFunction_SaveGZ", (PyCFunction)(void(*)(void))_wrap_QuadratureFunction_SaveGZ, METH_VARARGS|METH_KEYWORDS, "SaveGZ(QuadratureFunction self, char const * file, int precision=8)"},
 	 { "QuadratureFunction_swigregister", QuadratureFunction_swigregister, METH_O, NULL},
 	 { "QuadratureFunction_swiginit", QuadratureFunction_swiginit, METH_VARARGS, NULL},
 	 { "__lshift__", _wrap___lshift__, METH_VARARGS, "\n"
@@ -15711,7 +17279,6 @@ static swig_type_info _swigt__p_p_mfem__GridFunction = {"_p_p_mfem__GridFunction
 static swig_type_info _swigt__p_pri_t = {"_p_pri_t", "pri_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_quad_t = {"_p_quad_t", "quad_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_seg_t = {"_p_seg_t", "seg_t *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_std__istream = {"_p_std__istream", "std::istream *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_std__ostream = {"_p_std__ostream", "std::ostream *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_mfem__OutStream = {"_p_mfem__OutStream", 0, 0, 0, 0, 0};
 static swig_type_info _swigt__p_tet_t = {"_p_tet_t", "tet_t *", 0, 0, (void*)0, 0};
@@ -15918,7 +17485,6 @@ static swig_type_info *swig_type_initial[] = {
   &_swigt__p_pri_t,
   &_swigt__p_quad_t,
   &_swigt__p_seg_t,
-  &_swigt__p_std__istream,
   &_swigt__p_std__ostream,
   &_swigt__p_tet_t,
   &_swigt__p_tri_t,
@@ -16123,7 +17689,6 @@ static swig_cast_info _swigc__p_p_mfem__GridFunction[] = {  {&_swigt__p_p_mfem__
 static swig_cast_info _swigc__p_pri_t[] = {  {&_swigt__p_pri_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_quad_t[] = {  {&_swigt__p_quad_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_seg_t[] = {  {&_swigt__p_seg_t, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_std__istream[] = {  {&_swigt__p_std__istream, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_mfem__OutStream[] = {{&_swigt__p_mfem__OutStream, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_std__ostream[] = {  {&_swigt__p_std__ostream, 0, 0, 0},  {&_swigt__p_mfem__OutStream, _p_mfem__OutStreamTo_p_std__ostream, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_tet_t[] = {  {&_swigt__p_tet_t, 0, 0, 0},{0, 0, 0, 0}};
@@ -16330,7 +17895,6 @@ static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_pri_t,
   _swigc__p_quad_t,
   _swigc__p_seg_t,
-  _swigc__p_std__istream,
   _swigc__p_std__ostream,
   _swigc__p_tet_t,
   _swigc__p_tri_t,

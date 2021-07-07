@@ -283,7 +283,7 @@ class DenseMatrix(mfem._par.matrix.Matrix):
     Add = _swig_new_instance_method(_densemat.DenseMatrix_Add)
 
     def __iadd__(self, v):
-        ret = _densmat.DenseMatrix___iadd__(self, v)
+        ret = _densemat.DenseMatrix___iadd__(self, v)
         ret.thisown = self.thisown
         self.thisown = 0                  
         return ret
@@ -291,7 +291,7 @@ class DenseMatrix(mfem._par.matrix.Matrix):
 
 
     def __isub__(self, v):
-        ret = _densmat.DenseMatrix___isub__(self, v)  
+        ret = _densemat.DenseMatrix___isub__(self, v)  
         ret.thisown = self.thisown
         self.thisown = 0            
         return ret
@@ -299,7 +299,7 @@ class DenseMatrix(mfem._par.matrix.Matrix):
 
 
     def __imul__(self, v):
-        ret = _densmat.DenseMatrix___imul__(self, v)  
+        ret = _densemat.DenseMatrix___imul__(self, v)  
         ret.thisown = self.thisown
         self.thisown = 0            
         return ret
@@ -579,7 +579,7 @@ class DenseMatrix(mfem._par.matrix.Matrix):
         keep_link = False
         if len(args) == 1 and isinstance(args[0], ndarray):
                 if args[0].dtype != 'float64':
-                    raise ValueError('Must be float64 array:' + args[0].dtype + ' was given')  
+                    raise ValueError('Must be float64 array:' + str(args[0].dtype) + ' was given')  
                 elif args[0].ndim != 2:
                     raise ValueError('Ndim must be two') 
                 elif args[0].shape[1] != _densemat.DenseMatrix_Size(self):
@@ -621,6 +621,11 @@ class DenseMatrix(mfem._par.matrix.Matrix):
         return _densemat.DenseMatrix_Print(self, *args)
     Print = _swig_new_instance_method(_densemat.DenseMatrix_Print)
 
+    def PrintGZ(self, file, precision=8):
+        r"""PrintGZ(DenseMatrix self, char const * file, int precision=8)"""
+        return _densemat.DenseMatrix_PrintGZ(self, file, precision)
+    PrintGZ = _swig_new_instance_method(_densemat.DenseMatrix_PrintGZ)
+
     def PrintT(self, *args):
         r"""
         PrintT(DenseMatrix self, std::ostream & out=mfem::out, int width_=4)
@@ -629,6 +634,11 @@ class DenseMatrix(mfem._par.matrix.Matrix):
         return _densemat.DenseMatrix_PrintT(self, *args)
     PrintT = _swig_new_instance_method(_densemat.DenseMatrix_PrintT)
 
+    def PrintTGZ(self, file, precision=8):
+        r"""PrintTGZ(DenseMatrix self, char const * file, int precision=8)"""
+        return _densemat.DenseMatrix_PrintTGZ(self, file, precision)
+    PrintTGZ = _swig_new_instance_method(_densemat.DenseMatrix_PrintTGZ)
+
     def PrintMatlab(self, *args):
         r"""
         PrintMatlab(DenseMatrix self, std::ostream & out=mfem::out)
@@ -636,6 +646,11 @@ class DenseMatrix(mfem._par.matrix.Matrix):
         """
         return _densemat.DenseMatrix_PrintMatlab(self, *args)
     PrintMatlab = _swig_new_instance_method(_densemat.DenseMatrix_PrintMatlab)
+
+    def PrintMatlabGZ(self, file, precision=8):
+        r"""PrintMatlabGZ(DenseMatrix self, char const * file, int precision=8)"""
+        return _densemat.DenseMatrix_PrintMatlabGZ(self, file, precision)
+    PrintMatlabGZ = _swig_new_instance_method(_densemat.DenseMatrix_PrintMatlabGZ)
 
 # Register DenseMatrix in _densemat:
 _densemat.DenseMatrix_swigregister(DenseMatrix)

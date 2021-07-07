@@ -95,6 +95,7 @@ import mfem._par.hypre
 import mfem._par.restriction
 import mfem._par.bilininteg
 import mfem._par.linearform
+import mfem._par.nonlininteg
 class GridFunction(mfem._par.vector.Vector):
     r"""Proxy of C++ mfem::GridFunction class."""
 
@@ -526,7 +527,6 @@ class GridFunction(mfem._par.vector.Vector):
         __init__(GridFunction self, FiniteElementSpace f, double * data) -> GridFunction
         __init__(GridFunction self, Mesh m, std::istream & input) -> GridFunction
         __init__(GridFunction self, Mesh m, mfem::GridFunction *[] gf_array, int num_pieces) -> GridFunction
-        __init__(GridFunction self, Mesh m, char const * grid_file) -> GridFunction
         __init__(GridFunction self, FiniteElementSpace fes, Vector v, int offset) -> GridFunction
         """
         _gridfunc.GridFunction_swiginit(self, _gridfunc.new_GridFunction(*args))
@@ -535,6 +535,11 @@ class GridFunction(mfem._par.vector.Vector):
         r"""SaveToFile(GridFunction self, char const * gf_file, int const precision)"""
         return _gridfunc.GridFunction_SaveToFile(self, gf_file, precision)
     SaveToFile = _swig_new_instance_method(_gridfunc.GridFunction_SaveToFile)
+
+    def WriteToStream(self, StringIO):
+        r"""WriteToStream(GridFunction self, PyObject * StringIO) -> PyObject *"""
+        return _gridfunc.GridFunction_WriteToStream(self, StringIO)
+    WriteToStream = _swig_new_instance_method(_gridfunc.GridFunction_WriteToStream)
 
     def iadd(self, c):
         r"""iadd(GridFunction self, GridFunction c) -> GridFunction"""
@@ -566,6 +571,11 @@ class GridFunction(mfem._par.vector.Vector):
         """
         return _gridfunc.GridFunction_Save(self, *args)
     Save = _swig_new_instance_method(_gridfunc.GridFunction_Save)
+
+    def SaveGZ(self, file, precision=8):
+        r"""SaveGZ(GridFunction self, char const * file, int precision=8)"""
+        return _gridfunc.GridFunction_SaveGZ(self, file, precision)
+    SaveGZ = _swig_new_instance_method(_gridfunc.GridFunction_SaveGZ)
 
 # Register GridFunction in _gridfunc:
 _gridfunc.GridFunction_swigregister(GridFunction)
@@ -644,6 +654,11 @@ class QuadratureFunction(mfem._par.vector.Vector):
         """
         return _gridfunc.QuadratureFunction_Save(self, *args)
     Save = _swig_new_instance_method(_gridfunc.QuadratureFunction_Save)
+
+    def SaveGZ(self, file, precision=8):
+        r"""SaveGZ(QuadratureFunction self, char const * file, int precision=8)"""
+        return _gridfunc.QuadratureFunction_SaveGZ(self, file, precision)
+    SaveGZ = _swig_new_instance_method(_gridfunc.QuadratureFunction_SaveGZ)
 
 # Register QuadratureFunction in _gridfunc:
 _gridfunc.QuadratureFunction_swigregister(QuadratureFunction)

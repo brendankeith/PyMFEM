@@ -22,6 +22,11 @@ from setuptools.command.install_lib import install_lib as _install_lib
 from setuptools.command.install_scripts import install_scripts as _install_scripts
 
 try:
+    import numpy
+except ImportError:
+    assert False, "numpy is not found"
+    
+try:
     from setuptools._distutils.command.clean import clean as _clean
 except ImportError:
     from distutils.command.clean import clean as _clean
@@ -109,6 +114,14 @@ def long_description():
     with open(os.path.join(rootdir, 'README.md'), encoding='utf-8') as f:
         return f.read()
 
+def install_requires():
+    fname = os.path.join(rootdir, 'requirements.txt')
+    if not os.path.exists(fname):
+        return []
+    fid = open(fname)
+    requirements = fid.read().split('\n')
+    fid.close()
+    return requirements
 
 keywords = """
 scientific computing
@@ -132,7 +145,8 @@ metadata = {'name': 'mfem',
                             'License :: OSI Approved :: BSD License',
                             'Programming Language :: Python :: 3.6',
                             'Programming Language :: Python :: 3.7',
-                            'Programming Language :: Python :: 3.8', ],
+                            'Programming Language :: Python :: 3.8', 
+                            'Programming Language :: Python :: 3.9', ],            
             'keywords': [k for k in keywords.split('\n') if k],
             'platforms': [p for p in platforms.split('\n') if p],
             'license': 'BSD-3',
@@ -379,6 +393,7 @@ def cmake_make_mfem(serial=True):
                   'DMFEM_ENABLE_EXAMPLES': '1',
                   'DMFEM_ENABLE_MINIAPPS': '1',
                   'DCMAKE_SHARED_LINKER_FLAGS': '',
+                  'DMFEM_USE_ZLIB': '1',
                   'DCMAKE_CXX_FLAGS': cxx11_flag}
 
     if serial:
@@ -411,7 +426,7 @@ def cmake_make_mfem(serial=True):
 
         if enable_strumpack:
             cmake_opts['DMFEM_USE_STRUMPACK'] = '1'
-            cmake_opts['STRUMPACK_DIR'] = strumpack_prefix
+            cmake_opts['DSTRUMPACK_DIR'] = strumpack_prefix
         if enable_pumi:
             cmake_opts['DMFEM_USE_PUMI'] = '1'
             cmake_opts['DPUMI_DIR'] = pumi_prefix
@@ -1073,9 +1088,12 @@ def run_setup():
                 'clean': Clean}
     if haveWheel:
         cmdclass['bdist_wheel'] = BdistWheel
+
+    install_req = install_requires()
+    print(install_req)
     setup(
         cmdclass=cmdclass,
-        install_requires=[],
+        install_requires=install_req,
         packages=find_packages(),
         extras_require={},
         package_data={'mfem._par': ['*.so'], 'mfem._ser': ['*.so']},

@@ -10,7 +10,7 @@
 #include <cmath>
 #include <cstring>  
 #include <mpi.h>
-#include "io_stream.hpp"     
+#include "../common/io_stream.hpp"     
 #include "config/config.hpp"
 #include "mesh/pmesh.hpp"
 #include "fem/linearform.hpp"
@@ -41,7 +41,7 @@ import_array();
 
 %import "../common/io_stream_typemap.i"
 OSTREAM_TYPEMAP(std::ostream&)
-
+ISTREAM_TYPEMAP(std::istream&)
 
 %immutable face_nbr_elements;
 %immutable face_nbr_vertices;
@@ -55,10 +55,10 @@ def GroupFace(self, group, i, *args):
         from mfem.par import intp    
         face = intp()
         o = intp()
-        _pmesh.Mesh_ParGroupFace(self, group, i, face, o)      
+        $action(self, group, i, face, o)      
         return face.value(), o.value()
     else:
-        return _pmesh.ParMesh_GroupFace(self, group, i, *args)            
+        return $action(self, group, i, *args)            
 %}
 	  
 %feature("shadow") mfem::ParMesh::GroupEdge %{
@@ -67,10 +67,10 @@ def GroupEdge(self, group, i, *args):
         from mfem.par import intp  
         edge = intp()
         o = intp()  
-        _pmesh.ParMesh_GroupEdge(self, group, i, edge, o)
+        $action(self, group, i, edge, o)
         return edge.value(), o.value()
     else:
-        return _pmesh.ParMesh_GroupEdge(self, group, i, *args)      
+        return $action(self, group, i, *args)      
 %}
 
 
@@ -78,17 +78,18 @@ def GroupEdge(self, group, i, *args):
 
 namespace mfem{
 %extend ParMesh{
-ParMesh(MPI_Comm comm, const char *mesh_file){
-    mfem::ParMesh *mesh;
-    std::ifstream imesh(mesh_file);
-    if (!imesh)
-    {
-    std::cerr << "\nCan not open mesh file: " << mesh_file << '\n' << std::endl;
-    return NULL;
-    }
-    mesh = new mfem::ParMesh(comm, imesh);
-    return mesh;
-    }
+     //     
+     //ParMesh(MPI_Comm comm, const char *mesh_file){
+     //mfem::ParMesh *mesh;
+     //std::ifstream imesh(mesh_file);
+     //if (!imesh)
+     //{
+     //std::cerr << "\nCan not open mesh file: " << mesh_file << '\n' << std::endl;
+     //return NULL;
+     //}
+     //mesh = new mfem::ParMesh(comm, imesh);
+     //return mesh;
+     //}
 void ParPrintToFile(const char *mesh_file, const int precision) const
     {
     std::ofstream mesh_ofs(mesh_file);	
