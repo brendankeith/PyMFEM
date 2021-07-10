@@ -9,9 +9,10 @@ import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
 import math
-from math import atan2, sqrt, sin
+from math import atan2, sqrt, sin, cos
+import csv
 
-#ignore this.
+
 def Exact(pt):
     x = pt[0]
     y = pt[1]
@@ -25,16 +26,37 @@ def Exact(pt):
         theta += 2 * np.pi
     if y == 0 and x == -1:
         theta = np.pi
-    #if r > 0.0:
-    #    return r**alpha * sin(alpha * theta)
-    #else:
-    #    return 0.0
     return r**alpha * sin(alpha * theta)
 
-#ignore this.
+def ExactGrad(pt):
+    x = pt[0]
+    y = pt[1]
+    alpha = 2. / 3.
+    if (x == 0 and y == 0):
+        x+=1e-12
+        y+=1e-12
+    r = sqrt(x*x + y*y)
+    theta = atan2(y, x)
+    if y == 0 and x < 0:
+       theta += 2 * np.pi
+    if y < 0:
+       theta += 2 * np.pi
+    if y == 0 and x == -1:
+       theta = np.pi
+    rx = x/r
+    ry = y/r
+    thetax = - y / r**2
+    thetay =   x / r**2
+    fx = alpha * r**(alpha - 1.) *(rx*sin(alpha*theta) + r*thetax * cos(alpha*theta))
+    fy = alpha * r**(alpha - 1.) *(ry*sin(alpha*theta) + r*thetay * cos(alpha*theta))
+    return (fx, fy)
+
 class ExactCoefficient(mfem.PyCoefficient):
     def EvalValue(self, pt):
         return Exact(pt)
+class ExactGradCoefficient(mfem.VectorPyCoefficient):
+    def EvalValue(self, pt):
+        return ExactGrad(pt)
 
 class DoubleHpProblem(gym.Env):
 
@@ -48,11 +70,15 @@ class DoubleHpProblem(gym.Env):
         #self.RHS = mfem.ConstantCoefficient(1.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
 
+        #self.ExactVal = ExactCoefficient()
+        #self.ExactGrad = ExactGradCoefficient(2)
+
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-3)
         self.dof_threshold = kwargs.get('dof_threshold',1e4)
         self.step_threshold = kwargs.get('step_threshold',10)
         self.refinement_strategy = kwargs.get('refinement_strategy','max')
+        self.mode = kwargs.get('mode', 'hp')
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
         order = kwargs.get('order',1)
@@ -68,7 +94,10 @@ class DoubleHpProblem(gym.Env):
         self.initial_mesh = mesh
         self.order = order
         self.alpha = 0.05
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
+        if self.mode == 'h':
+            self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
+        elif self.mode == 'hp':
+            self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
     
     def reset(self):
@@ -95,7 +124,6 @@ class DoubleHpProblem(gym.Env):
             cost = np.log(1.0 + num_dofs/self.sum_of_dofs)
             self.sum_of_dofs += num_dofs
             if self.global_error < self.alpha * self.initial_error_estimate:
-            #if self.global_error < self.error_threshold:
                 cost = 0.0
                 done = True
             else:
@@ -204,30 +232,18 @@ class DoubleHpProblem(gym.Env):
         #rho = action['order'] # determine if we want to refine the order this time
         #theta = action['space'].item() #refinement threshold
         theta = action[0].item() #refinement threshold for h
-        rho = action[1].item() 
-        rho = theta * rho
-        #theta = 0.6
-        #rho = 0.4
-        """
-        if theta < 0. :
-          theta = 0.001
-        if theta > 0.999 :
-          theta = 0.999 
-        if rho < 0. :
-          rho = 0.001
-        if rho > 0.999 :
-          rho = 0.999 
-        """
-        #if rho == 1:
-        #    self.Prefine(theta)
-        #self.Prefine(theta, rho)
-        #self.Refine(theta)
-        if self.refinement_strategy == 'quantile':
-            h_refine_list, p_refine_list = self.MarkForRefinement(theta, rho)
-            self.PrefineQ(p_refine_list)
-            self.RefineQ(h_refine_list)
-        if self.refinement_strategy == 'max':
-            self.Prefine(theta, rho)
+        if self.mode == 'hp':
+            rho = action[1].item() 
+            rho = theta * rho
+        if self.mode == 'hp':
+            if self.refinement_strategy == 'quantile':
+                h_refine_list, p_refine_list = self.MarkForRefinement(theta, rho)
+                self.PrefineQ(p_refine_list)
+                self.RefineQ(h_refine_list)
+            if self.refinement_strategy == 'max':
+                self.Prefine(theta, rho)
+                self.Refine(theta)
+        if self.mode == 'h':
             self.Refine(theta)
 
     def MarkForRefinement(self, theta, rho):
@@ -257,7 +273,6 @@ class DoubleHpProblem(gym.Env):
                 if curr_err > cutoff_error_p:
                     mark_to_p_refine.append(i)
         return mark_to_h_refine, mark_to_p_refine
-
 
     def RefineQ(self, h_refine_list):
         elements_to_h_refine = intArray(h_refine_list)
@@ -360,32 +375,32 @@ class DoubleHpProblem(gym.Env):
                 self.mesh.SetBdrAttribute(i,2)
         self.mesh.SetAttributes()
     
-    def hpDeterministicPolicy(self):
-        thetaDeterministic = 0.85
+    def hpDeterministicPolicy(self, thetaDet):
         self.reset()
-        #while self.k <= 1:
+        #self.rows = []   
         while self.sum_of_dofs < self.dof_threshold:
-            #print("step", self.k)
             self.k += 1
             elements_to_h_refine = []
             elements_to_p_refine = []
             neighbor_table = self.mesh.ElementToElementTable()
             element_error_list = []
-            #Attempt at getting percentile based methods.
+
             for i in range(self.mesh.GetNE()):
                 element_error_list.append((i, self.errors[i]))
             element_error_list.sort(key=lambda x:x[1], reverse=True)
-            cutoff_number = math.floor(thetaDeterministic * self.mesh.GetNE())
-            cutoff_error = element_error_list[cutoff_number][1]
+            cutoff_number = math.ceil(thetaDet * (self.mesh.GetNE() - 1))
+            cutoff_error = element_error_list[cutoff_number][1]*(1-1e-4)
 
             for i in range(self.mesh.GetNE()):
                 curr_verts = self.mesh.GetElementVertices(i)
                 element_touching_corner = False
-                threshold = thetaDeterministic * np.max(self.errors)
                 curr_error = self.errors[i]
 
+                if self.refinement_strategy == 'max':
+                    threshold = thetaDet * np.max(self.errors)
+                else:
+                    threshold = cutoff_error
                 if threshold < curr_error:
-                #if cutoff_error <= curr_error:
                     for j in range(len(curr_verts)):
                         temp_arr = mfem.doubleArray(2)
                         coords = self.mesh.GetVertex(curr_verts[j])
@@ -433,9 +448,20 @@ class DoubleHpProblem(gym.Env):
             self.errors = self.GetLocalErrors()
             self.global_error = GlobalError(self.errors)
             self.sum_of_dofs += self.fespace.GetTrueVSize()
-            
+            #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
+        #with open('datafile', 'w') as datafile:
+        #    write = csv.writer(datafile)
+        #    write.writerow(headers)
+        #    write.writerows(rows)    
         print("dofs = ", self.sum_of_dofs)
         print("Global error = ", self.global_error)
+    
+    def compute_error_values(self):
+        self.ExactVal = ExactCoefficient()
+        self.ExactGrad = ExactGradCoefficient(2)
+        self.L2error = self.x.ComputeL2Error(self.ExactVal) 
+        self.H1error = self.x.ComputeH1Error(self.ExactVal,self.ExactGrad)
+
 
 
                 
