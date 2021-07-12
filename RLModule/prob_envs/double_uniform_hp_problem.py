@@ -419,14 +419,14 @@ class DoubleHpProblem(gym.Env):
                         elements_to_h_refine.append(i)
                     else:
                         elements_to_p_refine.append(i)
-                        neighbor_row = neighbor_table.GetRow(i)
-                        row_size = neighbor_table.RowSize(i)
-                        neighbor_array = intArray(row_size)
-                        neighbor_array.Assign(neighbor_row)
-                        for l in range(row_size):
-                            neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
-                            if neighbor_order <= self.fespace.GetElementOrder(i):
-                                elements_to_p_refine.append(neighbor_array[l])
+                        # neighbor_row = neighbor_table.GetRow(i)
+                        # row_size = neighbor_table.RowSize(i)
+                        # neighbor_array = intArray(row_size)
+                        # neighbor_array.Assign(neighbor_row)
+                        # for l in range(row_size):
+                        #     neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
+                        #     if neighbor_order <= self.fespace.GetElementOrder(i):
+                        #         elements_to_p_refine.append(neighbor_array[l])
 
             p_refine_elements = np.unique(elements_to_p_refine).tolist()
             for k in range(len(p_refine_elements)):
@@ -452,6 +452,9 @@ class DoubleHpProblem(gym.Env):
             # self.fespace.UpdatesFinished()
             self.a.Update()
             self.b.Update()
+
+            self.CloseMesh()
+
             self.AssembleAndSolve()
             self.errors = self.GetLocalErrors()
             self.global_error = GlobalError(self.errors)
@@ -463,6 +466,7 @@ class DoubleHpProblem(gym.Env):
         #    write.writerows(rows)    
         print("dofs = ", self.sum_of_dofs)
         print("Global error = ", self.global_error)
+        self.RenderMesh()
     
     def compute_error_values(self):
         self.ExactVal = ExactCoefficient()
@@ -470,6 +474,39 @@ class DoubleHpProblem(gym.Env):
         self.L2error = self.x.ComputeL2Error(self.ExactVal) 
         self.H1error = self.x.ComputeH1Error(self.ExactVal,self.ExactGrad)
 
+    def CloseMesh(self, delta_p = 1):
+        # Loop through all elements in mesh until the maximum difference in polynomial
+        # orders across all edges is no more than delta_p
+        neighbor_table = self.mesh.ElementToElementTable()
+        while True:
+            mesh_closed = True
+            elements_to_p_refine = []
+            for i in range(self.mesh.GetNE()):
+                neighbor_row = neighbor_table.GetRow(i)
+                row_size = neighbor_table.RowSize(i)
+                neighbor_array = intArray(row_size)
+                neighbor_array.Assign(neighbor_row)
+                for l in range(row_size):
+                    neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
+                    if neighbor_order - self.fespace.GetElementOrder(i) > delta_p:
+                        elements_to_p_refine.append(neighbor_array[l])
+                        mesh_closed = False
+            p_refine_elements = np.unique(elements_to_p_refine).tolist()
+            for k in range(len(p_refine_elements)):
+                current_element = p_refine_elements[k]
+                current_order = self.fespace.GetElementOrder(current_element)
+                self.fespace.SetElementOrder(current_element, current_order + 1)
+
+            if mesh_closed:
+                break
+
+        self.fespace.Update(False)
+        self.x.Update()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+        # self.fespace.UpdatesFinished()
+        self.a.Update()
+        self.b.Update()
 
 
                 
