@@ -63,7 +63,7 @@ class DoubleHpProblem(gym.Env):
     def __init__(self,**kwargs):
         super().__init__()
         self.problem_type = kwargs.get('problem_type', 'Exact')
-        if self.problem_type == 'Homogenous':
+        if self.problem_type == 'Homogeneous':
             self.BC = mfem.ConstantCoefficient(0.0)
             self.RHS = mfem.ConstantCoefficient(1.0)
         elif self.problem_type == 'Exact':
@@ -219,6 +219,15 @@ class DoubleHpProblem(gym.Env):
         M = mfem.GSSmoother(AA)
         mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
+
+    def SwapProblemType(self):
+        if self.problem_type == 'Homogeneous':
+            self.BC = ExactCoefficient()
+            self.RHS = mfem.ConstantCoefficient(0.0)
+        elif self.problem_type == 'Exact':
+            self.BC = mfem.ConstantCoefficient(0.0)
+            self.RHS = mfem.ConstantCoefficient(1.0)
+        return self.reset()
 
     def GetLocalErrors(self):
         self.estimator.Reset()
