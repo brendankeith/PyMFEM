@@ -62,13 +62,21 @@ class DoubleHpProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
+        self.problem_type = kwargs.get('problem_type', 'Exact')
+        if self.problem_type == 'Homogenous':
+            self.BC = mfem.ConstantCoefficient(0.0)
+            self.RHS = mfem.ConstantCoefficient(1.0)
+        elif self.problem_type == 'Exact':
+            self.BC = ExactCoefficient()
+            self.RHS = mfem.ConstantCoefficient(0.0)
+        self.coeff = mfem.ConstantCoefficient(1.0)
         #self.BC = mfem.ConstantCoefficient(0.0)
-        self.BC = ExactCoefficient()
+        #self.BC = ExactCoefficient()
         #delattr(self, 'RHS')
-        self.RHS = mfem.ConstantCoefficient(0.0)
+        #self.RHS = mfem.ConstantCoefficient(0.0)
         #self.RHS = RHSCoefficient()
         #self.RHS = mfem.ConstantCoefficient(1.0)
-        self.coeff = mfem.ConstantCoefficient(1.0)
+        #self.coeff = mfem.ConstantCoefficient(1.0)
 
         #self.ExactVal = ExactCoefficient()
         #self.ExactGrad = ExactGradCoefficient(2)
