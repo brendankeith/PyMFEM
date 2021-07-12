@@ -17,6 +17,7 @@ from prob_envs.double_uniform_hp_problem import DoubleHpProblem
 import numpy as np
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
 from drawnow import drawnow, figure
+import csv
 
 scores = []
 avg_scores = []
@@ -30,15 +31,17 @@ prob_config = {
     'mesh_name'         : 'l-shape-benchmark.mesh',
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
-    'refinement_strategy' : 'quantile', #'max', 'quantile'
+    'refinement_strategy' : 'max', #'max', 'quantile'
+    'mode' : 'hp', #'hp', 'h'
     'order'             : 1,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    'problem_type' : 'Exact', #Homogeneous, Exact
     # 'random_mesh'       : True
     #'error_threshold' : 2e-2,  #default is 1e-3
     #'dof_threshold' : 5e4 #default is 1e4
 }
 
-total_episodes = 2000
+total_episodes = 4000
 batch_size = 16
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 0
@@ -46,7 +49,7 @@ checkpoint_period = 0
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = 200
 config['sgd_minibatch_size'] = 20
-config['rollout_fragment_length'] = 50
+config['rollout_fragment_length'] = 5
 config['num_workers'] = 4
 config['num_gpus'] = 0
 config['gamma'] = 1.0
@@ -59,6 +62,8 @@ env = DoubleHpProblem(**prob_config)
 register_env("my_env", lambda config : DoubleHpProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
+#env.hpDeterministicPolicy(0.5)
+#env.RenderHPmesh()
 
 episode = 0
 checkpoint_episode = 0
@@ -106,10 +111,16 @@ prob_config['num_random_ref'] = 0
 episode_cost = 0
 done = False
 obs = env.reset()
+#obs = env.SwapProblemType()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
 rlcost = 0
 rlactions = []
+
+
+
+headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'L2_Error', 'H1_Error']
+rows = []
 while not done:
     action = agent.compute_action(obs,explore=False)
     rlactions.append(action)
@@ -122,38 +133,60 @@ while not done:
     print("episode cost = ", episode_cost)
     print("Num of dofs = ", env.sum_of_dofs)
     print("Global Error = ", env.global_error)
+    env.compute_error_values()
+    rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
     time.sleep(0.05)
     #env.RenderMesh()
     env.RenderHPmesh()
 
+with open('datafile', 'w') as datafile:
+    write = csv.writer(datafile)
+    write.writerow(headers)
+    write.writerows(rows)
+
 """
 costs = []
-rlcosts = []
+#rlcosts = []
 actions = []
 nth = 11
-for i in range(1, nth):
-    for j in range(0, 2):
-        #action = np.array([i/(nth-1)])
-        action = {'order' : j, 'space' : i / (nth-1)}
+headers = ['theta', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'L2_Error', 'H1_Error']
+#rows = []
+with open('datafile', 'w') as datafile:
+    write = csv.writer(datafile)
+    write.writerow(headers)
+    for i in range(0, nth - 1):
+        #for j in range(0, 2):
+        action = np.array([i/(nth-1)])
+        #action = {'order' : j, 'space' : i / (nth-1)}
         # actions.append(action.item())
-        rlcosts.append(rlcost)
+        #rlcosts.append(rlcost)
+        env.hpDeterministicPolicy(action)
         env.reset()
-        done = False
-        episode_cost = 0
-        while not done:
-            _, reward, done, info = env.step(action)
-            episode_cost -= reward 
-            print("step = ", env.k)
-            #print("action = ", action.item())
-            print("Num. Elems. = ", env.mesh.GetNE())
-            print("episode cost = ", episode_cost)
-        costs.append(episode_cost)
+        #write.writerow(headers)
+        write.writerows(env.rows)
+    done = False
+    episode_cost = 0
+    while not done:
+        _, reward, done, info = env.step(action)
+        episode_cost -= reward 
+        print("step = ", env.k)
+        #print("action = ", action.item())
+        print("Num. Elems. = ", env.mesh.GetNE())
+        print("episode cost = ", episode_cost)
+        #costs.append(episode_cost)
+        rows.append([action[0].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
+    
 
-ax[1].plot(costs,'-or',lw=1.3)
-ax[1].plot(rlcosts,'-b',lw=1.3)
+#with open('datafile', 'w') as datafile:
+#    write = csv.writer(datafile)
+#    write.writerow(headers)
+#    write.writerows(rows)
+
+#ax[1].plot(costs,'-or',lw=1.3)
+#ax[1].plot(rlcosts,'-b',lw=1.3)
 # ax.semilogy(cost,'r',lw=1.3)
-ax[1].set_ylabel("cost")
-ax[1].set_xlabel("Constant Actions (theta)")
+#ax[1].set_ylabel("cost")
+#ax[1].set_xlabel("Constant Actions (theta)")
 
-plt.show()
+#plt.show()
 """
