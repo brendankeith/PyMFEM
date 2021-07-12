@@ -59,7 +59,6 @@ env = DoubleHpProblem(**prob_config)
 register_env("my_env", lambda config : DoubleHpProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
-
 episode = 0
 checkpoint_episode = 0
 for n in range(nbatches):

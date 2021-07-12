@@ -451,6 +451,7 @@ class DoubleHpProblem(gym.Env):
             self.errors = self.GetLocalErrors()
             self.global_error = GlobalError(self.errors)
             self.sum_of_dofs += self.fespace.GetTrueVSize()
+            self.RenderHPmesh()
             #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
         #with open('datafile', 'w') as datafile:
         #    write = csv.writer(datafile)
@@ -458,7 +459,6 @@ class DoubleHpProblem(gym.Env):
         #    write.writerows(rows)    
         print("dofs = ", self.sum_of_dofs)
         print("Global error = ", self.global_error)
-        self.RenderMesh()
     
     def compute_error_values(self):
         self.ExactVal = ExactCoefficient()
@@ -481,7 +481,7 @@ class DoubleHpProblem(gym.Env):
                 for l in range(row_size):
                     neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
                     if neighbor_order - self.fespace.GetElementOrder(i) > delta_p:
-                        elements_to_p_refine.append(neighbor_array[l])
+                        elements_to_p_refine.append(i)
                         mesh_closed = False
             p_refine_elements = np.unique(elements_to_p_refine).tolist()
             for k in range(len(p_refine_elements)):
