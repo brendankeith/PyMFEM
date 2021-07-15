@@ -4,7 +4,8 @@ import numpy as np
 import os
 from os.path import expanduser, join
 
-mesh_name = 'circle_3_4.mesh'
+mesh_name = 'l-shape-benchmark.mesh'
+# mesh_name = 'circle_3_4.mesh'
 meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
 mesh = mfem.Mesh(meshfile)
 mesh.EnsureNodes()
@@ -14,8 +15,8 @@ dim = mesh.Dimension()
 fec = mfem.H1_FECollection(order, dim)
 fespace = mfem.FiniteElementSpace(mesh, fec)
 
-omega = 0
-# omega = np.pi/4
+# omega = 0
+omega = np.pi/4
 # omega = 3*np.pi/4
 nodes = mesh.GetNodes()
 print(nodes.Size()/2)
@@ -25,8 +26,8 @@ for i in range(num_nodes):
     y = nodes[2*i+1]
     theta = atan2(y, x)
     if x > 0 and abs(y) < 1e-6:
-        continue
-    if y < 0:
+        y = 0.0
+    elif y < 0:
         theta += 2*np.pi
     nodes[2*i] += 1.0
     nodes[2*i+1] += 1.0
