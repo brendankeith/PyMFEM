@@ -28,8 +28,6 @@ for i in range(num_nodes):
         theta = 0.0
     elif y < 0:
         theta += 2*np.pi
-    nodes[2*i] += 1.0
-    nodes[2*i+1] += 1.0
     delta_theta = theta/(3*np.pi/2) * (np.pi/2 - omega)
     x_tmp = x
     y_tmp = y
