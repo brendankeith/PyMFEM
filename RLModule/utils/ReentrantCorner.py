@@ -19,14 +19,13 @@ fespace = mfem.FiniteElementSpace(mesh, fec)
 omega = np.pi/4
 # omega = 3*np.pi/4
 nodes = mesh.GetNodes()
-print(nodes.Size()/2)
 num_nodes = int(nodes.Size()/2)
 for i in range(num_nodes):
     x = nodes[2*i]
     y = nodes[2*i+1]
     theta = atan2(y, x)
     if x > 0 and abs(y) < 1e-6:
-        y = 0.0
+        theta = 0.0
     elif y < 0:
         theta += 2*np.pi
     nodes[2*i] += 1.0
