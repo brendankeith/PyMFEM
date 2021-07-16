@@ -3,7 +3,7 @@ import numpy as np
 from pylab import *
 from scipy.fft import *
 
-class RandomLoad():
+class RandomFunction():
 
     def __init__(self, C=1, sigma=1e-3, N=1000):
 
@@ -32,7 +32,7 @@ class RandomLoad():
 
 if __name__ == '__main__':
     
-    load = RandomLoad()
+    load = RandomFunction()
     xx = np.linspace(0,1,5)
     g = np.array([load(x) for x in xx])
     plot(xx,g)

@@ -27,6 +27,7 @@ def draw_fig():
 
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
+    # 'mesh_name'         : 'circle_3_4.mesh',
     'mesh_name'         : 'l-shape-benchmark.mesh',
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
