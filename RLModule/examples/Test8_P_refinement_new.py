@@ -35,7 +35,7 @@ prob_config = {
     'mode' : 'hp', #'hp', 'h'
     'order'             : 1,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
-    'problem_type' : 'Exact', #Homogeneous, Exact
+    'problem_type' : 'Homogeneous', #Homogeneous, Exact
     # 'random_mesh'       : True
     #'error_threshold' : 2e-2,  #default is 1e-3
     #'dof_threshold' : 5e4 #default is 1e4
@@ -65,27 +65,31 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 #env.hpDeterministicPolicy(0.5)
 #env.RenderHPmesh()
 
-episode = 0
-checkpoint_episode = 0
-for n in range(nbatches):
-    print("training batch %d of %d batches" % (n+1,nbatches))
-    result = agent.train()
-    episode += config['train_batch_size']
-    checkpoint_episode += config['train_batch_size']
-    episode_score = -result["episode_reward_mean"]
-    print ("Episode cost", episode_score)
-    # scores.append(episode_score)
-    # if n == 0:
-    #     avg_scores.append(episode_score)
-    # else:
-    #     avg_scores.append(avg_scores[-1] * 0.99 + episode_score*0.01)
-    
-    # drawnow(draw_fig)
-    if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
-        checkpoint_episode = 0
-        checkpoint_path = agent.save()
-        print(checkpoint_path)    
-
+for j in range(4):
+    #nbatches = 50 * (j+3)
+    prob_config['dof_threshold'] = 1e4 / (2**(3 - j))
+    #prob_config['dof_threshold'] = 1e4 / (2**(j))
+    episode = 0
+    checkpoint_episode = 0
+    for n in range(nbatches):
+        print("training batch %d of %d batches" % (n+1,nbatches))
+        result = agent.train()
+        episode += config['train_batch_size']
+        checkpoint_episode += config['train_batch_size']
+        episode_score = -result["episode_reward_mean"]
+        print ("Episode cost", episode_score)
+        # scores.append(episode_score)
+        # if n == 0:
+        #     avg_scores.append(episode_score)
+        # else:
+        #     avg_scores.append(avg_scores[-1] * 0.99 + episode_score*0.01)
+        
+        # drawnow(draw_fig)
+        if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
+            checkpoint_episode = 0
+            checkpoint_path = agent.save()
+            print(checkpoint_path)    
+#prob_config['dof_threshold'] = 1e4
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -121,6 +125,8 @@ rlactions = []
 
 headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'L2_Error', 'H1_Error']
 rows = []
+obs_header = ['N', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'Average_Order']
+obs_rows = []
 while not done:
     action = agent.compute_action(obs,explore=False)
     rlactions.append(action)
@@ -134,7 +140,9 @@ while not done:
     print("Num of dofs = ", env.sum_of_dofs)
     print("Global Error = ", env.global_error)
     env.compute_error_values()
-    rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
+    rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+                 env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
+    obs_rows.append(obs)
     time.sleep(0.05)
     #env.RenderMesh()
     env.RenderHPmesh()
@@ -143,6 +151,10 @@ with open('datafile', 'w') as datafile:
     write = csv.writer(datafile)
     write.writerow(headers)
     write.writerows(rows)
+with open('statsfile', 'w') as statsfile:
+    write = csv.writer(statsfile)
+    write.writerow(obs_header)
+    write.writerows(obs_rows)
 
 """
 costs = []

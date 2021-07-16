@@ -51,6 +51,8 @@ def ExactGrad(pt):
     fy = alpha * r**(alpha - 1.) *(ry*sin(alpha*theta) + r*thetay * cos(alpha*theta))
     return (fx, fy)
 
+
+
 class ExactCoefficient(mfem.PyCoefficient):
     def EvalValue(self, pt):
         return Exact(pt)
@@ -260,6 +262,7 @@ class DoubleHpProblem(gym.Env):
             if self.refinement_strategy == 'max':
                 self.Prefine(theta, rho)
                 self.Refine(theta)
+            self.CloseMesh()
         if self.mode == 'h':
             self.Refine(theta)
 
@@ -393,87 +396,92 @@ class DoubleHpProblem(gym.Env):
         self.mesh.SetAttributes()
     
     def hpDeterministicPolicy(self, thetaDet):
-        self.reset()
-        #self.rows = []   
-        while self.sum_of_dofs < self.dof_threshold:
-            self.k += 1
-            elements_to_h_refine = []
-            elements_to_p_refine = []
-            neighbor_table = self.mesh.ElementToElementTable()
-            element_error_list = []
+        self.rows = []
+        headers = ['Theta', 'N', 'DoFs', 'Total DoFs', 'Error Estimate', 'L2 Error', 'H1 Error']
+        for T in range(10):
+            thetaDet = T / 10.
+            self.reset()
+            while self.sum_of_dofs < self.dof_threshold:
+                #thetaDet = T / 10.
+                self.k += 1
+                elements_to_h_refine = []
+                elements_to_p_refine = []
+                neighbor_table = self.mesh.ElementToElementTable()
+                element_error_list = []
 
-            for i in range(self.mesh.GetNE()):
-                element_error_list.append((i, self.errors[i]))
-            element_error_list.sort(key=lambda x:x[1], reverse=True)
-            cutoff_number = math.ceil(thetaDet * (self.mesh.GetNE() - 1))
-            cutoff_error = element_error_list[cutoff_number][1]*(1-1e-4)
+                for i in range(self.mesh.GetNE()):
+                    element_error_list.append((i, self.errors[i]))
+                element_error_list.sort(key=lambda x:x[1], reverse=True)
+                cutoff_number = math.ceil(thetaDet * (self.mesh.GetNE() - 1))
+                cutoff_error = element_error_list[cutoff_number][1]*(1-1e-4)
 
-            for i in range(self.mesh.GetNE()):
-                curr_verts = self.mesh.GetElementVertices(i)
-                element_touching_corner = False
-                curr_error = self.errors[i]
+                for i in range(self.mesh.GetNE()):
+                    curr_verts = self.mesh.GetElementVertices(i)
+                    element_touching_corner = False
+                    curr_error = self.errors[i]
 
-                if self.refinement_strategy == 'max':
-                    threshold = thetaDet * np.max(self.errors)
-                else:
-                    threshold = cutoff_error
-                if threshold < curr_error:
-                    for j in range(len(curr_verts)):
-                        temp_arr = mfem.doubleArray(2)
-                        coords = self.mesh.GetVertex(curr_verts[j])
-                        temp_arr.Assign(coords)
-                        if temp_arr[0] == 0.0 and temp_arr[1] == 0.0:
-                            element_touching_corner = True
-                    if(element_touching_corner):    
-                        elements_to_h_refine.append(i)
+                    if self.refinement_strategy == 'max':
+                        threshold = thetaDet * np.max(self.errors)
                     else:
-                        elements_to_p_refine.append(i)
-                        # neighbor_row = neighbor_table.GetRow(i)
-                        # row_size = neighbor_table.RowSize(i)
-                        # neighbor_array = intArray(row_size)
-                        # neighbor_array.Assign(neighbor_row)
-                        # for l in range(row_size):
-                        #     neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
-                        #     if neighbor_order <= self.fespace.GetElementOrder(i):
-                        #         elements_to_p_refine.append(neighbor_array[l])
+                        threshold = cutoff_error
+                    if threshold < curr_error:
+                        for j in range(len(curr_verts)):
+                            temp_arr = mfem.doubleArray(2)
+                            coords = self.mesh.GetVertex(curr_verts[j])
+                            temp_arr.Assign(coords)
+                            if temp_arr[0] == 0.0 and temp_arr[1] == 0.0:
+                                element_touching_corner = True
+                        if(element_touching_corner):    
+                            elements_to_h_refine.append(i)
+                        else:
+                            elements_to_p_refine.append(i)
+                            # neighbor_row = neighbor_table.GetRow(i)
+                            # row_size = neighbor_table.RowSize(i)
+                            # neighbor_array = intArray(row_size)
+                            # neighbor_array.Assign(neighbor_row)
+                            # for l in range(row_size):
+                            #     neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
+                            #     if neighbor_order <= self.fespace.GetElementOrder(i):
+                            #         elements_to_p_refine.append(neighbor_array[l])
 
-            p_refine_elements = np.unique(elements_to_p_refine).tolist()
-            for k in range(len(p_refine_elements)):
-                current_element = p_refine_elements[k]
-                current_order = self.fespace.GetElementOrder(current_element)
-                self.fespace.SetElementOrder(current_element, current_order + 1)
-            
-            self.fespace.Update(False)
-            self.x.Update()
-            self.x.Assign(0.0)
-            self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
-            # self.fespace.UpdatesFinished()
-            self.a.Update()
-            self.b.Update()
+                p_refine_elements = np.unique(elements_to_p_refine).tolist()
+                for k in range(len(p_refine_elements)):
+                    current_element = p_refine_elements[k]
+                    current_order = self.fespace.GetElementOrder(current_element)
+                    self.fespace.SetElementOrder(current_element, current_order + 1)
+                
+                self.fespace.Update(False)
+                self.x.Update()
+                self.x.Assign(0.0)
+                self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+                # self.fespace.UpdatesFinished()
+                self.a.Update()
+                self.b.Update()
 
-            elements_to_h_refine = intArray(elements_to_h_refine)
-            self.mesh.GeneralRefinement(elements_to_h_refine)
-            
-            self.fespace.Update(False)
-            self.x.Update()
-            self.x.Assign(0.0)
-            self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
-            # self.fespace.UpdatesFinished()
-            self.a.Update()
-            self.b.Update()
+                elements_to_h_refine = intArray(elements_to_h_refine)
+                self.mesh.GeneralRefinement(elements_to_h_refine)
+                
+                self.fespace.Update(False)
+                self.x.Update()
+                self.x.Assign(0.0)
+                self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+                # self.fespace.UpdatesFinished()
+                self.a.Update()
+                self.b.Update()
 
-            self.CloseMesh()
+                self.CloseMesh()
 
-            self.AssembleAndSolve()
-            self.errors = self.GetLocalErrors()
-            self.global_error = GlobalError(self.errors)
-            self.sum_of_dofs += self.fespace.GetTrueVSize()
-            self.RenderHPmesh()
-            #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
-        #with open('datafile', 'w') as datafile:
-        #    write = csv.writer(datafile)
-        #    write.writerow(headers)
-        #    write.writerows(rows)    
+                self.AssembleAndSolve()
+                self.errors = self.GetLocalErrors()
+                self.global_error = GlobalError(self.errors)
+                self.sum_of_dofs += self.fespace.GetTrueVSize()
+                self.RenderHPmesh()
+                self.compute_error_values()
+                self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
+        with open('datafile', 'w') as datafile:
+            write = csv.writer(datafile)
+            write.writerow(headers)
+            write.writerows(self.rows)
         print("dofs = ", self.sum_of_dofs)
         print("Global error = ", self.global_error)
     
