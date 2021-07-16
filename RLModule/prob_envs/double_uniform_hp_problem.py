@@ -12,6 +12,7 @@ import math
 from math import atan2, sqrt, sin, cos
 import csv
 
+from utils.RandomFunction import RandomFunction
 
 def Exact(pt):
     x = pt[0]
@@ -51,11 +52,41 @@ def ExactGrad(pt):
     fy = alpha * r**(alpha - 1.) *(ry*sin(alpha*theta) + r*thetay * cos(alpha*theta))
     return (fx, fy)
 
+<<<<<<< HEAD
 
+=======
+##### BK: New class called RandomCoefficient()
+
+class RandomCoefficient(mfem.PyCoefficient):
+
+    def __init__(self, omega=np.pi/2, scale=1.0):
+        self.omega = omega
+        self.scale = scale
+        self.fluctuations = RandomFunction()
+        super().__init__()
+
+    def EvalValue(self, pt):
+        x = pt[0]
+        y = pt[1]
+        r = sqrt(x**2 + y**2)
+        if r < 1.0:
+            return Exact(pt)
+        else:
+            theta = atan2(y, x)
+            if x > 0 and abs(y) < 1e-6:
+                theta = 0.0
+            elif y < 0:
+                theta += 2*np.pi
+            s = theta/(2*np.pi - self.omega)
+            return Exact(pt) + self.scale * self.fluctuations(s)
+
+#####
+>>>>>>> f8d0ddbe0baafa95bb82a4751bb3c76bb4b86aeb
 
 class ExactCoefficient(mfem.PyCoefficient):
     def EvalValue(self, pt):
         return Exact(pt)
+
 class ExactGradCoefficient(mfem.VectorPyCoefficient):
     def EvalValue(self, pt):
         return ExactGrad(pt)
@@ -113,6 +144,15 @@ class DoubleHpProblem(gym.Env):
     def reset(self):
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
+
+        ##### BK: Example of use of RandomCoefficient()
+
+        omega = np.pi/2
+        scale = 1.0
+        self.BC = RandomCoefficient(omega=omega, scale=scale)
+
+        #####
+
         self.Setup()
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
