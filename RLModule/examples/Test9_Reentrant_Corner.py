@@ -32,11 +32,11 @@ prob_config = {
     'mesh_name_two'     : 'circle_3_4.mesh',
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
-    'refinement_strategy' : 'max', #'max', 'quantile'
+    'refinement_strategy' : 'max', #'max', 'quantile', 'dorfler'
     'mode' : 'hp', #'hp', 'h'
     'order'             : 2,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
-    'problem_type' : 'Exact', #Homogeneous, Exact
+    'problem_type' : 'Random', #Homogeneous, Exact, Random
     # 'random_mesh'       : True
     #'error_threshold' : 2e-2,  #default is 1e-3
     #'dof_threshold' : 5e4 #default is 1e4
@@ -68,7 +68,7 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 #env.hpDeterministicPolicy(0.5)
 #env.RenderHPmesh()
 
-for j in range(4):
+for j in range(1):
     #nbatches = 50 * (j+1)
     prob_config['dof_threshold'] = 1e4 / (2**(3 - j))
     episode = 0

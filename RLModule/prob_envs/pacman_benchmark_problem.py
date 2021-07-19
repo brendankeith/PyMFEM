@@ -96,6 +96,11 @@ class PacmanProblem(gym.Env):
         elif self.problem_type == 'Exact':
             self.BC = ExactCoefficient()
             self.RHS = mfem.ConstantCoefficient(0.0)
+        else:
+            omega = np.pi/2
+            scale = 1.0
+            self.BC = RandomCoefficient(omega=omega, scale=scale)
+            self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
         #self.BC = mfem.ConstantCoefficient(0.0)
         #self.BC = ExactCoefficient()
@@ -152,9 +157,11 @@ class PacmanProblem(gym.Env):
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
 
-        omega = np.pi/2
-        scale = 1.0
-        self.BC = RandomCoefficient(omega=omega, scale=scale)
+
+        if self.problem_type == 'Random':
+            omega = np.pi/2
+            scale = 1.0
+            self.BC = RandomCoefficient(omega=omega, scale=scale)
 
         self.Setup()
         self.AssembleAndSolve()
@@ -317,9 +324,17 @@ class PacmanProblem(gym.Env):
             if self.refinement_strategy == 'max':
                 self.Prefine(theta, rho)
                 self.Refine(theta)
+            if self.refinement_strategy == 'dorfler':
+                self.PrefineD(theta, rho)
+                self.RefineD(theta)
             self.CloseMesh()
         if self.mode == 'h':
             self.Refine(theta)
+
+#    def PrefineD(theta, rho):
+        
+
+#    def RefineD(theta):
 
     def MarkForRefinement(self, theta, rho):
         mark_to_h_refine = []
