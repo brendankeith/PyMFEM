@@ -52,9 +52,6 @@ def ExactGrad(pt):
     fy = alpha * r**(alpha - 1.) *(ry*sin(alpha*theta) + r*thetay * cos(alpha*theta))
     return (fx, fy)
 
-<<<<<<< HEAD
-
-=======
 ##### BK: New class called RandomCoefficient()
 
 class RandomCoefficient(mfem.PyCoefficient):
@@ -81,7 +78,6 @@ class RandomCoefficient(mfem.PyCoefficient):
             return Exact(pt) + self.scale * self.fluctuations(s)
 
 #####
->>>>>>> f8d0ddbe0baafa95bb82a4751bb3c76bb4b86aeb
 
 class ExactCoefficient(mfem.PyCoefficient):
     def EvalValue(self, pt):

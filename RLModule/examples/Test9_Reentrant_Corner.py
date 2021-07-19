@@ -68,9 +68,9 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 #env.hpDeterministicPolicy(0.5)
 #env.RenderHPmesh()
 
-for j in range(5):
+for j in range(4):
     #nbatches = 50 * (j+1)
-    prob_config['dof_threshold'] = 1e4 / (2**(4 - j))
+    prob_config['dof_threshold'] = 1e4 / (2**(3 - j))
     episode = 0
     checkpoint_episode = 0
     for n in range(nbatches):
@@ -159,7 +159,7 @@ with open('statsfile', 'w') as statsfile:
     write.writerow(obs_header)
     write.writerows(obs_rows)
 
-
+"""
 agent.restore(checkpoint_path)
 prob_config['random_mesh'] = False
 
@@ -209,6 +209,7 @@ with open('statsfile2', 'w') as statsfile2:
     write = csv.writer(statsfile2)
     write.writerow(obs_header)
     write.writerows(obs_rows)
+"""
 
 """
 costs = []

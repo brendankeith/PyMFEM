@@ -27,6 +27,8 @@ class RandomFunction():
             return self.g[-1]
         else:
             ind = math.floor(s*self.N)
+            if ind >= self.N - 1:
+                ind = self.N - 2
             ds = (s*self.N - ind)/self.N
             return self.g[ind]*(1-ds) + self.g[ind+1]*ds
 
