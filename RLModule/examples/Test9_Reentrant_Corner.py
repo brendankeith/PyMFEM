@@ -12,7 +12,7 @@ import pandas as pd
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.tune.registry import register_env
-from prob_envs.double_uniform_hp_problem import DoubleHpProblem
+from prob_envs.pacman_benchmark_problem import PacmanProblem
 # from prob_envs.VariableInitialMesh import VariableInitialMesh
 import numpy as np
 # from prob_envs.FixedInitialMesh import FixedInitialMesh
@@ -28,18 +28,18 @@ def draw_fig():
 
 prob_config = {
     # 'mesh_name'         : 'star.mesh',
-    # 'mesh_name'         : 'circle_3_4.mesh',
-    'mesh_name'         : 'l-shape-benchmark.mesh',
+    'mesh_name'         : 'l-shape-benchmark.mesh', #'l-shape-benchmark.mesh','circle_3_4.mesh'
+    'mesh_name_two'     : 'circle_3_4.mesh',
     'num_unif_ref'      : 1,
     # 'num_random_ref'    : 2,
-    'refinement_strategy' : 'max', #'max', 'quantile'
+    'refinement_strategy' : 'dorfler', #'max', 'quantile', 'dorfler'
     'mode' : 'hp', #'hp', 'h'
-    'order'             : 1,
+    'order'             : 2,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
-    'problem_type' : 'Homogeneous', #Homogeneous, Exact
+    'problem_type' : 'Homogeneous', #Homogeneous, Exact, Random
     # 'random_mesh'       : True
     #'error_threshold' : 2e-2,  #default is 1e-3
-    #'dof_threshold' : 5e4 #default is 1e4
+    'dof_threshold' : 1e4 #default is 1e4
 }
 
 total_episodes = 4000
@@ -59,17 +59,25 @@ config['lr'] = 1e-4
 
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
-env = DoubleHpProblem(**prob_config)
-register_env("my_env", lambda config : DoubleHpProblem(**prob_config))
+env = PacmanProblem(**prob_config)
+register_env("my_env", lambda config : PacmanProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
+
+#env.RenderMesh()
 
 #env.hpDeterministicPolicy(0.5)
 #env.RenderHPmesh()
+env.reset()
+env.RenderHPmesh()
+env.step(np.array([0.5, 1.0]))
+env.RenderHPmesh()
+env.step(np.array([1.0, 0.25]))
+env.RenderHPmesh()
 
-for j in range(4):
-    #nbatches = 50 * (j+3)
-    prob_config['dof_threshold'] = 1e4 / (2**(3 - j))
-    #prob_config['dof_threshold'] = 1e4 / (2**(j))
+
+for j in range(1):
+    #nbatches = 50 * (j+1)
+    #prob_config['dof_threshold'] = prob_config['dof_threshold'] / (2**(3 - j))
     episode = 0
     checkpoint_episode = 0
     for n in range(nbatches):
@@ -105,9 +113,9 @@ ax[0].set_ylabel("cost")
 ax[0].set_xlabel("iteration")
 plt.show()
 
+
+
 agent.restore(checkpoint_path)
-
-
 prob_config['random_mesh'] = False
 
 ## print
@@ -116,6 +124,7 @@ prob_config['num_random_ref'] = 0
 episode_cost = 0
 done = False
 obs = env.reset()
+#obs = env.reset_to_new_mesh()
 #obs = env.SwapProblemType()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
@@ -156,6 +165,58 @@ with open('statsfile', 'w') as statsfile:
     write = csv.writer(statsfile)
     write.writerow(obs_header)
     write.writerows(obs_rows)
+
+"""
+agent.restore(checkpoint_path)
+prob_config['random_mesh'] = False
+
+## print
+import time
+prob_config['num_random_ref'] = 0
+episode_cost = 0
+done = False
+obs = env.reset_to_new_mesh()
+#obs = env.SwapProblemType()
+print("Num. Elems. = ", env.mesh.GetNE())
+env.render()
+rlcost = 0
+rlactions = []
+
+
+
+headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'L2_Error', 'H1_Error']
+rows = []
+obs_header = ['N', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'Average_Order']
+obs_rows = []
+while not done:
+    action = agent.compute_action(obs,explore=False)
+    rlactions.append(action)
+    obs, reward, done, info = env.step(action)
+    episode_cost -= reward 
+    rlcost = episode_cost
+    print("step = ", env.k)
+    print("action = ", action)
+    print("Num. Elems. = ", env.mesh.GetNE())
+    print("episode cost = ", episode_cost)
+    print("Num of dofs = ", env.sum_of_dofs)
+    print("Global Error = ", env.global_error)
+    env.compute_error_values()
+    rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+                 env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
+    obs_rows.append(obs)
+    time.sleep(0.05)
+    #env.RenderMesh()
+    env.RenderHPmesh()
+
+with open('datafile2', 'w') as datafile2:
+    write = csv.writer(datafile2)
+    write.writerow(headers)
+    write.writerows(rows)
+with open('statsfile2', 'w') as statsfile2:
+    write = csv.writer(statsfile2)
+    write.writerow(obs_header)
+    write.writerows(obs_rows)
+"""
 
 """
 costs = []

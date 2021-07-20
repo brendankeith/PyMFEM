@@ -1,3 +1,4 @@
+from mfem._ser.restriction import GetFaceDofs
 from threading import current_thread
 from mfem._ser.gridfunc import GridFunction, ProlongToMaxOrder
 import os
@@ -8,17 +9,19 @@ import numpy as np
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
+from utils.ReentrantCorner import ReentrantCorner
 import math
 from math import atan2, sqrt, sin, cos
 import csv
-
 from utils.RandomFunction import RandomFunction
+
 
 def Exact(pt):
     x = pt[0]
     y = pt[1]
     r = sqrt(x*x + y*y)
-    alpha = 2. / 3.
+    omega = 3 * np.pi / 2
+    alpha = np.pi / omega
 
     theta = atan2(y, x)
     if y == 0 and x < 0:
@@ -52,7 +55,6 @@ def ExactGrad(pt):
     fy = alpha * r**(alpha - 1.) *(ry*sin(alpha*theta) + r*thetay * cos(alpha*theta))
     return (fx, fy)
 
-##### BK: New class called RandomCoefficient()
 
 class RandomCoefficient(mfem.PyCoefficient):
 
@@ -77,17 +79,14 @@ class RandomCoefficient(mfem.PyCoefficient):
             s = theta/(2*np.pi - self.omega)
             return Exact(pt) + self.scale * self.fluctuations(s)
 
-#####
-
 class ExactCoefficient(mfem.PyCoefficient):
     def EvalValue(self, pt):
         return Exact(pt)
-
 class ExactGradCoefficient(mfem.VectorPyCoefficient):
     def EvalValue(self, pt):
         return ExactGrad(pt)
 
-class DoubleHpProblem(gym.Env):
+class PacmanProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
@@ -97,6 +96,11 @@ class DoubleHpProblem(gym.Env):
             self.RHS = mfem.ConstantCoefficient(1.0)
         elif self.problem_type == 'Exact':
             self.BC = ExactCoefficient()
+            self.RHS = mfem.ConstantCoefficient(0.0)
+        else:
+            omega = np.pi/2
+            scale = 1.0
+            self.BC = RandomCoefficient(omega=omega, scale=scale)
             self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
         #self.BC = mfem.ConstantCoefficient(0.0)
@@ -110,6 +114,8 @@ class DoubleHpProblem(gym.Env):
         #self.ExactVal = ExactCoefficient()
         #self.ExactGrad = ExactGradCoefficient(2)
 
+        self.omega = 3 * np.pi / 2
+
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-3)
         self.dof_threshold = kwargs.get('dof_threshold',1e4)
@@ -117,18 +123,29 @@ class DoubleHpProblem(gym.Env):
         self.refinement_strategy = kwargs.get('refinement_strategy','max')
         self.mode = kwargs.get('mode', 'hp')
         mesh_name = kwargs.get('mesh_name','l-shape.mesh')
+        mesh_name_two = kwargs.get('mesh_name_two', 'circle_3_4.mesh')
         num_unif_ref = kwargs.get('num_unif_ref',1)
         order = kwargs.get('order',1)
         self.average_order = order
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
+        meshfile_two = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name_two))
         mesh = mfem.Mesh(meshfile)
         self.mesh = mesh
+        mesh_two = mfem.Mesh(meshfile_two)
+        self.mesh_two = mesh_two
         #self.SetBoundaryAttributes()
         mesh.EnsureNCMesh()
+        mesh_two.EnsureNCMesh()
         for _ in range(num_unif_ref):
             mesh.UniformRefinement()
+            mesh_two.UniformRefinement()
         self.dim = mesh.Dimension()
         self.initial_mesh = mesh
+        self.initial_mesh_two = mesh_two
+
+        self.mesh = ReentrantCorner(self.omega, meshfile)
+        self.mesh_two = ReentrantCorner(self.omega, meshfile_two)
+
         self.order = order
         self.alpha = 0.05
         if self.mode == 'h':
@@ -141,14 +158,24 @@ class DoubleHpProblem(gym.Env):
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
 
-        ##### BK: Example of use of RandomCoefficient()
 
-        omega = np.pi/2
-        scale = 1.0
-        self.BC = RandomCoefficient(omega=omega, scale=scale)
+        if self.problem_type == 'Random':
+            omega = np.pi/2
+            scale = 1.0
+            self.BC = RandomCoefficient(omega=omega, scale=scale)
 
-        #####
-
+        self.Setup()
+        self.AssembleAndSolve()
+        self.errors = self.GetLocalErrors()
+        obs = self.Errors2Observation(self.errors)
+        self.global_error = GlobalError(self.errors)
+        self.initial_error_estimate = self.global_error
+        self.sum_of_dofs = self.fespace.GetTrueVSize()
+        return obs
+    
+    def reset_to_new_mesh(self):
+        self.k = 0
+        self.mesh = mfem.Mesh(self.initial_mesh_two)
         self.Setup()
         self.AssembleAndSolve()
         self.errors = self.GetLocalErrors()
@@ -298,9 +325,68 @@ class DoubleHpProblem(gym.Env):
             if self.refinement_strategy == 'max':
                 self.Prefine(theta, rho)
                 self.Refine(theta)
+            if self.refinement_strategy == 'dorfler':
+                h_refine_list, p_refine_list = self.DorflerMark(theta, rho)
+                self.PrefineQ(p_refine_list)
+                self.RefineQ(h_refine_list)
             self.CloseMesh()
         if self.mode == 'h':
             self.Refine(theta)
+
+    def DorflerMark(self, theta, rho):
+        mark_to_h_refine = []
+        mark_to_p_refine = []
+        element_error_list = []
+        sum_cnt = 0
+        h_done = False
+        for i in range(self.mesh.GetNE()):
+            element_error_list.append((i, self.errors[i]))
+        element_error_list.sort(key=lambda x:x[1], reverse=True)
+        eta2 = 0
+        for i in range(self.mesh.GetNE()):
+            eta2 += element_error_list[i][1] * element_error_list[i][1]
+        for i in range(self.mesh.GetNE()):
+            if (sum_cnt < (1 - theta) * eta2) and not h_done:
+                mark_to_h_refine.append(element_error_list[i][0])
+                sum_cnt += element_error_list[i][1] * element_error_list[i][1]
+                next_el = 1
+                if (i + next_el < self.mesh.GetNE()):
+                    while (element_error_list[i + next_el][1] * (1 - 1e-6) > element_error_list[i][1]):
+                    #while abs(element_error_list[i+next_el][1] - element_error_list[i][1]) <= 1e-10:
+                        mark_to_h_refine.append(element_error_list[i+next_el][0])
+                        sum_cnt += element_error_list[i + next_el][1] * element_error_list[i + next_el][1]
+                        next_el += 1
+                        if (i + next_el == self.mesh.GetNE()):
+                            break
+                i += next_el
+                #if (i == self.mesh.GetNE()):
+                #    break
+            elif (sum_cnt >= (1 - theta) * eta2):
+                h_done = True
+            if (sum_cnt <= (1- rho) * eta2 and h_done):
+                mark_to_p_refine.append(element_error_list[i][0])
+                sum_cnt += element_error_list[i][1] * element_error_list[i][1]
+                next_el = 1
+                if (i + next_el < self.mesh.GetNE()):
+                    while (element_error_list[i + next_el][1] * (1 - 1e-6) > element_error_list[i][1]):
+                    #while abs(element_error_list[i+next_el][1] - element_error_list[i][1]) <= 1e-10:
+                        mark_to_p_refine.append(element_error_list[i+next_el][0])
+                        next_el += 1
+                        sum_cnt += element_error_list[i + next_el][1] * element_error_list[i + next_el][1]
+                        if (i + next_el == self.mesh.GetNE()):
+                            break
+                i += next_el
+                if (i == self.mesh.GetNE()):
+                    break
+            elif (sum_cnt > (1 - rho) * eta2) and h_done:
+                break
+            #if(i > self.mesh.GetNE()):
+            #    break
+            #else:
+            #    mark_to_p_refine.append(element_error_list[i][0])
+        return mark_to_h_refine, mark_to_p_refine
+        
+
 
     def MarkForRefinement(self, theta, rho):
         mark_to_h_refine = []
