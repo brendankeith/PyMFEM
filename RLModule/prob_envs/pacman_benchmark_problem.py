@@ -1,3 +1,4 @@
+from mfem._ser.restriction import GetFaceDofs
 from threading import current_thread
 from mfem._ser.gridfunc import GridFunction, ProlongToMaxOrder
 import os
@@ -325,16 +326,67 @@ class PacmanProblem(gym.Env):
                 self.Prefine(theta, rho)
                 self.Refine(theta)
             if self.refinement_strategy == 'dorfler':
-                self.PrefineD(theta, rho)
-                self.RefineD(theta)
+                h_refine_list, p_refine_list = self.DorflerMark(theta, rho)
+                self.PrefineQ(p_refine_list)
+                self.RefineQ(h_refine_list)
             self.CloseMesh()
         if self.mode == 'h':
             self.Refine(theta)
 
-#    def PrefineD(theta, rho):
+    def DorflerMark(self, theta, rho):
+        mark_to_h_refine = []
+        mark_to_p_refine = []
+        element_error_list = []
+        sum_cnt = 0
+        h_done = False
+        for i in range(self.mesh.GetNE()):
+            element_error_list.append((i, self.errors[i]))
+        element_error_list.sort(key=lambda x:x[1], reverse=True)
+        eta2 = 0
+        for i in range(self.mesh.GetNE()):
+            eta2 += element_error_list[i][1] * element_error_list[i][1]
+        for i in range(self.mesh.GetNE()):
+            if (sum_cnt < (1 - theta) * eta2) and not h_done:
+                mark_to_h_refine.append(element_error_list[i][0])
+                sum_cnt += element_error_list[i][1] * element_error_list[i][1]
+                next_el = 1
+                if (i + next_el < self.mesh.GetNE()):
+                    while (element_error_list[i + next_el][1] * (1 - 1e-6) > element_error_list[i][1]):
+                    #while abs(element_error_list[i+next_el][1] - element_error_list[i][1]) <= 1e-10:
+                        mark_to_h_refine.append(element_error_list[i+next_el][0])
+                        sum_cnt += element_error_list[i + next_el][1] * element_error_list[i + next_el][1]
+                        next_el += 1
+                        if (i + next_el == self.mesh.GetNE()):
+                            break
+                i += next_el
+                #if (i == self.mesh.GetNE()):
+                #    break
+            elif (sum_cnt >= (1 - theta) * eta2):
+                h_done = True
+            if (sum_cnt <= (1- rho) * eta2 and h_done):
+                mark_to_p_refine.append(element_error_list[i][0])
+                sum_cnt += element_error_list[i][1] * element_error_list[i][1]
+                next_el = 1
+                if (i + next_el < self.mesh.GetNE()):
+                    while (element_error_list[i + next_el][1] * (1 - 1e-6) > element_error_list[i][1]):
+                    #while abs(element_error_list[i+next_el][1] - element_error_list[i][1]) <= 1e-10:
+                        mark_to_p_refine.append(element_error_list[i+next_el][0])
+                        next_el += 1
+                        sum_cnt += element_error_list[i + next_el][1] * element_error_list[i + next_el][1]
+                        if (i + next_el == self.mesh.GetNE()):
+                            break
+                i += next_el
+                if (i == self.mesh.GetNE()):
+                    break
+            elif (sum_cnt > (1 - rho) * eta2) and h_done:
+                break
+            #if(i > self.mesh.GetNE()):
+            #    break
+            #else:
+            #    mark_to_p_refine.append(element_error_list[i][0])
+        return mark_to_h_refine, mark_to_p_refine
         
 
-#    def RefineD(theta):
 
     def MarkForRefinement(self, theta, rho):
         mark_to_h_refine = []

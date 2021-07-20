@@ -79,12 +79,12 @@ def ReentrantCorner(omega, meshfile):
         nodes[2*i] = x
         nodes[2*i+1] = y
 
-    sol_sock = mfem.socketstream("localhost", 19916)
-    sol_sock.precision(8)
-    zerogf = mfem.GridFunction(fespace)
-    zerogf.Assign(0.0)
-    sol_sock.send_solution(mesh, zerogf)
-    sol_sock.send_text('keys ARjlmp*******')
+    #sol_sock = mfem.socketstream("localhost", 19916)
+    ##sol_sock.precision(8)
+    #zerogf = mfem.GridFunction(fespace)
+    #zerogf.Assign(0.0)
+    #sol_sock.send_solution(mesh, zerogf)
+    #sol_sock.send_text('keys ARjlmp*******')
 
     return mesh
 
