@@ -8,6 +8,8 @@ from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
 from utils.solution_wavefront import *
 
+import pandas as pd
+
 class StationaryProblem(gym.Env):
 
     def __init__(self,**kwargs):
@@ -43,7 +45,12 @@ class StationaryProblem(gym.Env):
         self.action_space = spaces.Box(low=0.0, high=0.999, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
     
-    def reset(self):
+    def reset(self, save_errors=False):
+        if save_errors:
+            self.save_errors = True
+            self.df_ErrorHistory = pd.DataFrame()
+        else:
+            self.save_errors = False
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
         self.Setup()
@@ -180,6 +187,13 @@ class StationaryProblem(gym.Env):
         self.a.Update()
         self.b.Update()
 
+    def SaveErrorsToFile(self, file_name='./RLModule/out/errors.csv'):
+        ## Check if error history object exists
+        if not hasattr(self,'df_ErrorHistory'):
+            self.df_ErrorHistory = pd.DataFrame()
+        df_tmp = pd.DataFrame({str(self.k):self.errors})
+        self.df_ErrorHistory = pd.concat([self.df_ErrorHistory,df_tmp], ignore_index=True, axis=1)
+        self.df_ErrorHistory.to_csv(file_name, index=False)
 
 class DeRefStationaryProblem(StationaryProblem):
 
