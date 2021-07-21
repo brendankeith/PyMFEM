@@ -6,6 +6,7 @@
 
 import os
 import matplotlib.pyplot as plt
+from numpy.core.numeric import True_
 import pandas as pd
 import ray
 import ray.rllib.agents.ppo as ppo
@@ -35,19 +36,29 @@ prob_config = {
     # 'random_mesh'       : True
 }
 
-total_episodes = 4000
-batch_size = 16
-nbatches = int(total_episodes/batch_size)
+# env = StationaryProblem(**prob_config)
+# env.reset(save_errors=True)
+# env.step(0.25)
+# env.step(0.25)
+# env.step(0.25)
+# env.step(0.25)
+# env.step(0.25)
+# env.step(0.25)
+# env.step(0.25)
+# env.reset()
+
+nbatches = 250
 checkpoint_period = 200
 
 config = ppo.DEFAULT_CONFIG.copy()
-config['train_batch_size'] = batch_size
-config['sgd_minibatch_size'] = batch_size
-config['rollout_fragment_length'] = batch_size
+config['train_batch_size'] = 100
+config['sgd_minibatch_size'] = 50
+config['rollout_fragment_length'] = 20
 config['num_workers'] = 3
 config['num_gpus'] = 0
 config['gamma'] = 1.0
 config['lr'] = 1e-4
+config['seed'] = 4000
 
 
 ray.shutdown()

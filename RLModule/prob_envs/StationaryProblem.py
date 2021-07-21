@@ -44,6 +44,7 @@ class StationaryProblem(gym.Env):
         self.order = order
         self.action_space = spaces.Box(low=0.0, high=0.999, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
+        self.error_file_name = kwargs.get('error_file_name','./RLModule/out/errors.csv')
     
     def reset(self, save_errors=False):
         if save_errors:
@@ -59,6 +60,8 @@ class StationaryProblem(gym.Env):
         self.global_error = max(GlobalError(self.errors),1e-8)
         self.sum_of_dofs = self.fespace.GetTrueVSize()
         obs = self.GetObservation()
+        if self.save_errors:
+            self.SaveErrorsToFile()
         return obs
     
     def step(self, action):
@@ -106,6 +109,8 @@ class StationaryProblem(gym.Env):
                 done = False
         obs = self.GetObservation()
         info = {'global_error':self.global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
+        if self.save_errors:
+            self.SaveErrorsToFile()
         return obs, -cost, done, info
     
     def render(self):
@@ -137,7 +142,8 @@ class StationaryProblem(gym.Env):
         self.refiner = mfem.ThresholdRefiner(self.estimator)
 
     def GetObservation(self):
-        stats = Statistics(self.errors)
+        num_dofs = self.fespace.GetTrueVSize()
+        stats = Statistics(self.errors, num_dofs=num_dofs)
         # rel_dof_threshold = (np.log(self.dof_threshold) - np.log(self.sum_of_dofs))/np.log(self.dof_threshold)
         # rel_error_threshold = (np.log(self.error_threshold) - np.log(self.global_error))/np.log(self.error_threshold)
         # obs = [rel_dof_threshold, rel_error_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
@@ -187,13 +193,11 @@ class StationaryProblem(gym.Env):
         self.a.Update()
         self.b.Update()
 
-    def SaveErrorsToFile(self, file_name='./RLModule/out/errors.csv'):
-        ## Check if error history object exists
-        if not hasattr(self,'df_ErrorHistory'):
-            self.df_ErrorHistory = pd.DataFrame()
-        df_tmp = pd.DataFrame({str(self.k):self.errors})
-        self.df_ErrorHistory = pd.concat([self.df_ErrorHistory,df_tmp], ignore_index=True, axis=1)
-        self.df_ErrorHistory.to_csv(file_name, index=False)
+    def SaveErrorsToFile(self):
+        num_dofs = self.fespace.GetTrueVSize()
+        df_tmp = pd.DataFrame({str(num_dofs):self.errors})
+        self.df_ErrorHistory = pd.concat([self.df_ErrorHistory,df_tmp], axis=1)
+        self.df_ErrorHistory.to_csv(self.error_file_name, index=False)
 
 class DeRefStationaryProblem(StationaryProblem):
 
