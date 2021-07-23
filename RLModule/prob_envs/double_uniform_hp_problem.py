@@ -106,7 +106,7 @@ class DoubleHpProblem(gym.Env):
         #self.RHS = RHSCoefficient()
         #self.RHS = mfem.ConstantCoefficient(1.0)
         #self.coeff = mfem.ConstantCoefficient(1.0)
-
+        self.zero = mfem.ConstantCoefficient(0.0)
         #self.ExactVal = ExactCoefficient()
         #self.ExactGrad = ExactGradCoefficient(2)
 
@@ -123,6 +123,10 @@ class DoubleHpProblem(gym.Env):
         meshfile = expanduser(join(os.path.dirname(__file__), '../..', 'data', mesh_name))
         mesh = mfem.Mesh(meshfile)
         self.mesh = mesh
+
+        self.zero_vector = mfem.Vector(self.dim)
+        self.zero_vector.Assign(0.0)
+        self.zerovector = mfem.VectorConstantCoefficient(self.zero_vector)
         #self.SetBoundaryAttributes()
         mesh.EnsureNCMesh()
         for _ in range(num_unif_ref):
@@ -257,6 +261,7 @@ class DoubleHpProblem(gym.Env):
         M = mfem.GSSmoother(AA)
         mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
+        self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
 
     def SwapProblemType(self):
         if self.problem_type == 'Homogeneous':
@@ -270,7 +275,7 @@ class DoubleHpProblem(gym.Env):
     def GetLocalErrors(self):
         self.estimator.Reset()
         mfem_errors = self.estimator.GetLocalErrors()
-        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())])
+        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())]) / self.solution_norm
         return errors
 
     def RenderMesh(self):
