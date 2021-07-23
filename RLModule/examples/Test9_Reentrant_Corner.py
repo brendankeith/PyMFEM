@@ -30,13 +30,14 @@ prob_config = {
     # 'mesh_name'         : 'star.mesh',
     'mesh_name'         : 'l-shape-benchmark.mesh', #'l-shape-benchmark.mesh','circle_3_4.mesh'
     'mesh_name_two'     : 'circle_3_4.mesh',
-    'num_unif_ref'      : 1,
+    'num_unif_ref'      : 1, 
     # 'num_random_ref'    : 2,
-    'refinement_strategy' : 'dorfler', #'max', 'quantile', 'dorfler'
+    'refinement_strategy' : 'max', #'max', 'quantile', 'dorfler'
     'mode' : 'hp', #'hp', 'h'
-    'order'             : 2,
+    'order'             : 1,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
     'problem_type' : 'Homogeneous', #Homogeneous, Exact, Random
+    'mesh_type'         :  'RandomAngle', #RandomAngle, Fixed
     # 'random_mesh'       : True
     #'error_threshold' : 2e-2,  #default is 1e-3
     'dof_threshold' : 1e4 #default is 1e4
@@ -63,21 +64,29 @@ env = PacmanProblem(**prob_config)
 register_env("my_env", lambda config : PacmanProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
+
+#checkpoint_path = "/home/justin/ray_results/PPO_my_env_2021-07-22_11-34-0626sk6yja/checkpoint_000250/checkpoint-250"
+
 #env.RenderMesh()
 
 #env.hpDeterministicPolicy(0.5)
 #env.RenderHPmesh()
-env.reset()
-env.RenderHPmesh()
-env.step(np.array([0.5, 1.0]))
-env.RenderHPmesh()
-env.step(np.array([1.0, 0.25]))
-env.RenderHPmesh()
+#env.reset()
+#env.RenderHPmesh()
+#env.step(np.array([0.5, 1.0]))
+#env.RenderHPmesh()
+#env.step(np.array([1.0, 0.25]))
+#env.RenderHPmesh()
 
+#env.reset()
+#env.RenderHPmesh()
+#env.reset()
+#env.RenderHPmesh()
+#env.reset()
+#env.RenderHPmesh()
 
 for j in range(1):
-    #nbatches = 50 * (j+1)
-    #prob_config['dof_threshold'] = prob_config['dof_threshold'] / (2**(3 - j))
+    #env.Continuation(j)
     episode = 0
     checkpoint_episode = 0
     for n in range(nbatches):
@@ -98,7 +107,6 @@ for j in range(1):
             checkpoint_episode = 0
             checkpoint_path = agent.save()
             print(checkpoint_path)    
-#prob_config['dof_threshold'] = 1e4
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -108,10 +116,11 @@ cost = -df.episode_reward_mean.to_numpy()
 
 fig, ax = plt.subplots(2)
 ax[0].plot(cost,'r',lw=1.3)
-# ax.semilogy(cost,'r',lw=1.3)
+#ax.semilogy(cost,'r',lw=1.3)
 ax[0].set_ylabel("cost")
 ax[0].set_xlabel("iteration")
 plt.show()
+
 
 
 
@@ -123,9 +132,11 @@ import time
 prob_config['num_random_ref'] = 0
 episode_cost = 0
 done = False
-obs = env.reset()
-#obs = env.reset_to_new_mesh()
+#obs = env.reset()
+#env.RenderHPmesh()
+obs = env.reset_to_new_mesh()
 #obs = env.SwapProblemType()
+env.RenderHPmesh()
 print("Num. Elems. = ", env.mesh.GetNE())
 env.render()
 rlcost = 0
@@ -216,6 +227,7 @@ with open('statsfile2', 'w') as statsfile2:
     write = csv.writer(statsfile2)
     write.writerow(obs_header)
     write.writerows(obs_rows)
+
 """
 
 """

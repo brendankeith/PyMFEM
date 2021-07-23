@@ -35,14 +35,14 @@ class RandomFunction():
 if __name__ == '__main__':
     
     load = RandomFunction()
-    xx = np.linspace(0,1,5)
-    g = np.array([load(x) for x in xx])
-    plot(xx,g)
+    #xx = np.linspace(0,1,5)
+    #g = np.array([load(x) for x in xx])
+    #plot(xx,g)
 
-    xx = np.linspace(0,1,100)
-    g = np.array([load(x) for x in xx])
-    plot(xx,g)
+    #xx = np.linspace(0,1,100)
+    #g = np.array([load(x) for x in xx])
+    #plot(xx,g)
 
-    # for i in range(100):
-        # plot(load.sample())
+    for i in range(100):
+         plot(load.sample())
     plt.show()
