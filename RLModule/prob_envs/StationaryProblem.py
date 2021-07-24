@@ -45,6 +45,11 @@ class StationaryProblem(gym.Env):
         self.action_space = spaces.Box(low=0.0, high=0.999, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
         self.error_file_name = kwargs.get('error_file_name','./RLModule/out/errors.csv')
+
+        self.zero = mfem.ConstantCoefficient(0.0)
+        self.zero_vector = mfem.Vector(self.dim)
+        self.zero_vector.Assign(0.0)
+        self.zerovector = mfem.VectorConstantCoefficient(self.zero_vector)
     
     def reset(self, save_errors=False):
         if save_errors:
@@ -162,11 +167,12 @@ class StationaryProblem(gym.Env):
         M = mfem.GSSmoother(AA)
         mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
+        self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
 
     def GetLocalErrors(self):
         self.estimator.Reset()
         mfem_errors = self.estimator.GetLocalErrors()
-        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())])
+        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())]) / self.solution_norm
         return errors
 
     def RenderMesh(self):
@@ -212,9 +218,8 @@ class DeRefStationaryProblem(StationaryProblem):
         theta2 *= theta1 # enforces deref < ref threshold 
         self.Refine(theta1)
         self.Derefine(theta2)
-    
-    def Derefine(self, theta2):
-        threshold = theta2 * np.max(self.errors)
+
+    def GetNewErrors(self):
         if self.mesh.GetLastOperation() == self.mesh.REFINE:
             self.rtransforms = self.mesh.GetRefinementTransforms()
             coarse_to_fine = mfem.Table()
@@ -222,22 +227,48 @@ class DeRefStationaryProblem(StationaryProblem):
             ref_type_to_matrix = mfem.Table()
             ref_type_to_geom = mfem.GeometryTypeArray()
             self.rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
-            new_errors = mfem.doubleArray(coarse_to_fine.Width())
+            self.new_errors = mfem.doubleArray(coarse_to_fine.Width())
             tmp = mfem.intArray(1)
             for i in range(coarse_to_fine.Width()):
-                new_errors[i] = mfem.infinity()
+                self.new_errors[i] = mfem.infinity()
             for i in range(coarse_to_fine.Size()):
                 if coarse_to_fine.RowSize(i) == 1:
                     tmp_data = coarse_to_fine.GetRow(i)
                     tmp.Assign(tmp_data)
                     index = tmp[0]
-                    new_errors[index] = self.errors[i]
+                    self.new_errors[index] = self.errors[i]
         else:
             nel = len(self.errors)
-            new_errors = mfem.doubleArray(nel)
+            self.new_errors = mfem.doubleArray(nel)
             for i in range(nel):
-                new_errors[i] = self.errors[i]
-        self.mesh.DerefineByError(new_errors,threshold)
+                self.new_errors[i] = self.errors[i]
+    
+    def Derefine(self, theta2):
+        threshold = theta2 * np.max(self.errors)
+        # if self.mesh.GetLastOperation() == self.mesh.REFINE:
+        #     self.rtransforms = self.mesh.GetRefinementTransforms()
+        #     coarse_to_fine = mfem.Table()
+        #     coarse_to_ref_type = mfem.intArray()
+        #     ref_type_to_matrix = mfem.Table()
+        #     ref_type_to_geom = mfem.GeometryTypeArray()
+        #     self.rtransforms.GetCoarseToFineMap(self.mesh, coarse_to_fine, coarse_to_ref_type, ref_type_to_matrix, ref_type_to_geom)
+        #     new_errors = mfem.doubleArray(coarse_to_fine.Width())
+        #     tmp = mfem.intArray(1)
+        #     for i in range(coarse_to_fine.Width()):
+        #         new_errors[i] = mfem.infinity()
+        #     for i in range(coarse_to_fine.Size()):
+        #         if coarse_to_fine.RowSize(i) == 1:
+        #             tmp_data = coarse_to_fine.GetRow(i)
+        #             tmp.Assign(tmp_data)
+        #             index = tmp[0]
+        #             new_errors[index] = self.errors[i]
+        # else:
+        #     nel = len(self.errors)
+        #     new_errors = mfem.doubleArray(nel)
+        #     for i in range(nel):
+        #         new_errors[i] = self.errors[i]
+        self.GetNewErrors()
+        self.mesh.DerefineByError(self.new_errors,threshold)
         
         # self.refiner.Reset()
         self.fespace.Update()
