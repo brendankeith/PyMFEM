@@ -25,12 +25,10 @@ def Exact(pt):
     alpha = np.pi / omega
 
     theta = atan2(y, x)
-    if y == 0 and x < 0:
-        theta += 2 * np.pi
-    if y < 0:
-        theta += 2 * np.pi
-    if y == 0 and x == -1:
-        theta = np.pi
+    if x > 0 and abs(y) < 1e-6:
+        theta = 0.0
+    elif y < 0:
+        theta += 2*np.pi
     return r**alpha * sin(alpha * theta)
 
 def ExactGrad(pt):
@@ -42,12 +40,10 @@ def ExactGrad(pt):
         y+=1e-12
     r = sqrt(x*x + y*y)
     theta = atan2(y, x)
-    if y == 0 and x < 0:
-       theta += 2 * np.pi
-    if y < 0:
-       theta += 2 * np.pi
-    if y == 0 and x == -1:
-       theta = np.pi
+    if x > 0 and abs(y) < 1e-6:
+        theta = 0.0
+    elif y < 0:
+        theta += 2*np.pi
     rx = x/r
     ry = y/r
     thetax = - y / r**2
@@ -228,7 +224,6 @@ class PacmanProblem(gym.Env):
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
                 self.mesh.UniformRefinement()
-
 
         self.Setup()
         self.AssembleAndSolve()
@@ -565,6 +560,7 @@ class PacmanProblem(gym.Env):
         for i in range(0, self.mesh.GetNE()):
             elem_dofs = 0
             elem_dofs = ordersfes.GetElementDofs(i)
+            # orders[elem_dofs[0]] = self.errors[i]
             orders[elem_dofs[0]] = self.fespace.GetElementOrder(i)
         sol_sock = mfem.socketstream("localhost", 19916)
         sol_sock.precision(8)
