@@ -15,6 +15,7 @@ from math import atan2, sqrt, sin, cos
 import csv
 from utils.RandomFunction import RandomFunction
 
+from matplotlib.pyplot import pause
 
 def Exact(pt):
     x = pt[0]
@@ -100,7 +101,7 @@ class PacmanProblem(gym.Env):
             self.RHS = mfem.ConstantCoefficient(0.0)
         else:
             omega = np.pi/2
-            scale = 0.5
+            scale = 0.0
             self.BC = RandomCoefficient(omega=omega, scale=scale)
             self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
@@ -600,6 +601,16 @@ class PacmanProblem(gym.Env):
             if vert_in_boundary:
                 self.mesh.SetBdrAttribute(i,2)
         self.mesh.SetAttributes()
+
+    def GetElementVertices(self, k):
+        Tr = self.mesh.GetElementTransformation(k)
+        physical_pts = np.zeros((4,2))
+        reference_pt = mfem.IntegrationPoint()
+        for i in range(2):
+            for j in range(2):
+                reference_pt.Set(float(i),float(j),0.0,0.0)
+                physical_pts[i+2*j,:] = Tr.Transform(reference_pt)
+        return physical_pts
     
     def hpDeterministicPolicy(self, thetaDet):
 
@@ -612,8 +623,11 @@ class PacmanProblem(gym.Env):
             #self.RenderHPmesh()
             episode_cost = 0.0
             while self.sum_of_dofs < self.dof_threshold:
+                self.mesh.EnsureNodes()
+
                 #thetaDet = T / 10.
                 #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error])#, self.L2error, self.H1error])
+
                 self.k += 1
                 elements_to_h_refine = []
                 elements_to_p_refine = []
@@ -627,7 +641,8 @@ class PacmanProblem(gym.Env):
                 cutoff_error = element_error_list[cutoff_number][1]*(1-1e-4)
 
                 for i in range(self.mesh.GetNE()):
-                    curr_verts = self.mesh.GetElementVertices(i)
+
+                    vertex_coords = self.GetElementVertices(i)
                     element_touching_corner = False
                     curr_error = self.errors[i]
 
@@ -636,13 +651,12 @@ class PacmanProblem(gym.Env):
                     else:
                         threshold = cutoff_error
                     if threshold < curr_error:
-                        for j in range(len(curr_verts)):
-                            temp_arr = mfem.doubleArray(2)
-                            coords = self.mesh.GetVertex(curr_verts[j])
-                            temp_arr.Assign(coords)
-                            if temp_arr[0] == 0.0 and temp_arr[1] == 0.0:
+                        for j in range(4):
+                            x = vertex_coords[j,0]
+                            y = vertex_coords[j,1]
+                            if abs(x) < 1e-10 and abs(y) < 1e-10:
                                 element_touching_corner = True
-                        if(element_touching_corner):    
+                        if(element_touching_corner):
                             elements_to_h_refine.append(i)
                         else:
                             elements_to_p_refine.append(i)
@@ -689,7 +703,7 @@ class PacmanProblem(gym.Env):
                 self.errors = self.GetLocalErrors()
                 self.global_error = new_global_error
                 self.sum_of_dofs += self.fespace.GetTrueVSize()
-                #self.RenderHPmesh()
+                # self.RenderHPmesh()
                 #self.compute_error_values()
 
 
