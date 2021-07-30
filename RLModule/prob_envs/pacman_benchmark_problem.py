@@ -77,6 +77,7 @@ class RandomCoefficient(mfem.PyCoefficient):
             elif y < 0:
                 theta += 2*np.pi
             s = theta/(2*np.pi - self.omega)
+            #s = 0.5
             return Exact(pt) + self.scale * self.fluctuations(s)
 
 class ExactCoefficient(mfem.PyCoefficient):
@@ -99,7 +100,7 @@ class PacmanProblem(gym.Env):
             self.RHS = mfem.ConstantCoefficient(0.0)
         else:
             omega = np.pi/2
-            scale = 1.0
+            scale = 0.5
             self.BC = RandomCoefficient(omega=omega, scale=scale)
             self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
@@ -156,27 +157,36 @@ class PacmanProblem(gym.Env):
             self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
         elif self.mode == 'hp':
             self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
     
-    def reset(self):
+    def reset(self, swap=False):
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
-        
-        if self.problem_type == 'Random':
-            omega = np.pi/2
-            scale = 1.0
-            self.BC = RandomCoefficient(omega=omega, scale=scale)
+        if swap:
+            if self.mesh_type == 'RandomAngle':
+                self.mesh_type = 'Fixed'
+            else:
+                self.mesh_type = 'RandomAngle'
+
         if  self.mesh_type == 'RandomAngle':
-            curr_angle = np.random.uniform(0, 2, 1).item() * np.pi
-            self.mesh = ReentrantCorner(curr_angle, self.meshfile)
+            self.curr_angle = np.random.uniform(1/4, 3/4, 1).item() * np.pi
+            #self.curr_angle = 1/2 * np.pi
+            #print(curr_angle)
+            self.mesh = ReentrantCorner(self.curr_angle, self.meshfile)
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
                 self.mesh.UniformRefinement()
         elif self.mesh_type == 'Fixed':
+            self.curr_angle = 1/2 * np.pi
             self.mesh = mfem.Mesh(self.meshfile)
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
                 self.mesh.UniformRefinement()
+
+        if self.problem_type == 'Random':
+            #omega = np.pi/2
+            scale = 1.0
+            self.BC = RandomCoefficient(omega=self.curr_angle, scale=scale)
 
         self.Setup()
         self.AssembleAndSolve()
@@ -185,20 +195,35 @@ class PacmanProblem(gym.Env):
         obs = self.Errors2Observation(self.errors)
         self.global_error = GlobalError(self.errors)
         self.initial_error_estimate = self.global_error
+        #self.RenderHPmesh()
         return obs
     
-    def reset_to_new_mesh(self, mesh_type='Fixed'):
+    def reset_to_new_mesh(self, mesh_type='Fixed', swap=False, newmesh=False):
         self.k = 0
         #self.mesh = mfem.Mesh(self.initial_mesh_two)
+        #self.initial_mesh = self.initial_mesh_two
+
+        if newmesh == True:
+            MeshFile = self.meshfile_two
+        else:
+            MeshFile = self.meshfile
+
+        if swap:
+            if self.mesh_type == 'RandomAngle':
+                self.mesh_type = 'Fixed'
+            else:
+                self.mesh_type = 'RandomAngle'
 
         if  mesh_type == 'RandomAngle':
-            curr_angle = np.random.uniform(0, 2, 1).item() * np.pi
-            self.mesh = ReentrantCorner(curr_angle, self.meshfile)
+            self.mesh = mfem.Mesh(MeshFile)
+            self.curr_angle = np.random.uniform(0, 2, 1).item() * np.pi
+            self.mesh = ReentrantCorner(self.curr_angle, MeshFile)
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
                 self.mesh.UniformRefinement()
         elif mesh_type == 'Fixed':
-            self.mesh = mfem.Mesh(self.meshfile)
+            self.curr_angle = np.pi / 2
+            self.mesh = mfem.Mesh(MeshFile)
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
                 self.mesh.UniformRefinement()
@@ -296,11 +321,13 @@ class PacmanProblem(gym.Env):
 
 
     def Errors2Observation(self, errors):
-        stats = Statistics(errors)
-        average_order = self.ComputeAverageOrder()
+        num_dofs = self.fespace.GetTrueVSize()
+        stats = Statistics(self.errors, num_dofs=num_dofs)
+        #stats = Statistics(errors)
+        #average_order = self.ComputeAverageOrder()
         #obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis, average_order]
         #obs = [self.sum_of_dofs, stats.mean, stats.variance, stats.skewness, stats.kurtosis, average_order]
-        obs = [self.sum_of_dofs / self.dof_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis]
+        obs = [self.sum_of_dofs / self.dof_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis, self.curr_angle]
         return np.array(obs)
 
     def AssembleAndSolve(self):
@@ -575,13 +602,18 @@ class PacmanProblem(gym.Env):
         self.mesh.SetAttributes()
     
     def hpDeterministicPolicy(self, thetaDet):
+
         self.rows = []
-        headers = ['Theta', 'N', 'DoFs', 'Total DoFs', 'Error Estimate', 'L2 Error', 'H1 Error']
-        for T in range(10):
-            thetaDet = T / 10.
-            self.reset()
+        headers = ['Theta', 'N', 'DoFs', 'Total DoFs', 'Error Estimate', 'Cost']#, 'L2 Error', 'H1 Error']
+        for T in range(100):
+            thetaDet = T / 100.
+            #thetaDet = 0.5
+            self.reset_to_new_mesh(newmesh=True)
+            #self.RenderHPmesh()
+            episode_cost = 0.0
             while self.sum_of_dofs < self.dof_threshold:
                 #thetaDet = T / 10.
+                #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error])#, self.L2error, self.H1error])
                 self.k += 1
                 elements_to_h_refine = []
                 elements_to_p_refine = []
@@ -652,12 +684,21 @@ class PacmanProblem(gym.Env):
 
                 self.AssembleAndSolve()
 
+                new_global_error = GlobalError(self.errors)
+                cost = np.log(new_global_error / self.global_error)
                 self.errors = self.GetLocalErrors()
-                self.global_error = GlobalError(self.errors)
+                self.global_error = new_global_error
                 self.sum_of_dofs += self.fespace.GetTrueVSize()
-                self.RenderHPmesh()
-                self.compute_error_values()
-                self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
+                #self.RenderHPmesh()
+                #self.compute_error_values()
+
+
+                if self.sum_of_dofs > self.dof_threshold:
+                    cost = 0.0
+
+                episode_cost += cost
+            self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, episode_cost])
+            #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
         with open('datafile', 'w') as datafile:
             write = csv.writer(datafile)
             write.writerow(headers)
@@ -707,11 +748,11 @@ class PacmanProblem(gym.Env):
 
     def Continuation(self, iteration):
         if iteration == 0:
-            self.dof_threshold = 2500
+            self.dof_threshold = self.dof_threshold / 4
         elif iteration == 1:
-            self.dof_threshold = 5000
+            self.dof_threshold = self.dof_threshold * 2
         else:
-            self.dof_threshold = 10000
+            self.dof_threshold = self.dof_threshold * 2
                 
                     
 

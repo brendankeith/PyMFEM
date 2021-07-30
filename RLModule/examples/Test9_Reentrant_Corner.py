@@ -36,12 +36,20 @@ prob_config = {
     'mode' : 'hp', #'hp', 'h'
     'order'             : 1,
     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
-    'problem_type' : 'Homogeneous', #Homogeneous, Exact, Random
+    'problem_type' : 'Random', #Homogeneous, Exact, Random
     'mesh_type'         :  'RandomAngle', #RandomAngle, Fixed
     # 'random_mesh'       : True
     #'error_threshold' : 2e-2,  #default is 1e-3
     'dof_threshold' : 1e4 #default is 1e4
 }
+
+data_deterministic_no_flagging = False  #Set this to True if you want to do a deterministic policy data collection with no flagging.
+data_deterministic = False              #Set this to True if you want to do a deterministic policy data collection with flagging.
+                                        #Note that the deterministic policy with flagging is currently set up to run 100 values of theta
+                                        #from 0.0 to 0.99, so it will override any theta value that is passed into it.
+training = True                         #Set this to True if you want to train a policy.
+evaluation = True                       #Set this to True if you want to evaluate a trained policy.  You must have training set to True as well or give a checkpoint path.
+pacman_mesh = False                          #Set this to True if you want to train on pacman-like meshes.
 
 total_episodes = 4000
 batch_size = 16
@@ -64,12 +72,162 @@ env = PacmanProblem(**prob_config)
 register_env("my_env", lambda config : PacmanProblem(**prob_config))
 agent = ppo.PPOTrainer(env="my_env", config=config)
 
+if pacman_mesh:
+    env.reset_to_new_mesh(newmesh=True)
 
-#checkpoint_path = "/home/justin/ray_results/PPO_my_env_2021-07-22_11-34-0626sk6yja/checkpoint_000250/checkpoint-250"
 
-#env.RenderMesh()
+#checkpoint_path = "/home/justin/ray_results/PPO_my_env_2021-07-23_09-10-2354t2zdvl/checkpoint_000250/checkpoint-250"
 
-#env.hpDeterministicPolicy(0.5)
+if data_deterministic:
+    env.hpDeterministicPolicy(0.6)
+
+if training:
+    for j in range(1):
+        #env.Continuation(j)
+        episode = 0
+        checkpoint_episode = 0
+        for n in range(nbatches):
+            print("training batch %d of %d batches" % (n+1,nbatches))
+            result = agent.train()
+            episode += config['train_batch_size']
+            checkpoint_episode += config['train_batch_size']
+            episode_score = -result["episode_reward_mean"]
+            print ("Episode cost", episode_score)
+            # scores.append(episode_score)
+            # if n == 0:
+            #     avg_scores.append(episode_score)
+            # else:
+            #     avg_scores.append(avg_scores[-1] * 0.99 + episode_score*0.01)
+            
+            # drawnow(draw_fig)
+            if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
+                checkpoint_episode = 0
+                checkpoint_path = agent.save()
+                print(checkpoint_path)    
+
+    root_path, _ = os.path.split(checkpoint_path)
+    root_path, _ = os.path.split(root_path)
+    csv_path = root_path + '/progress.csv'
+    df = pd.read_csv(csv_path)
+    cost = -df.episode_reward_mean.to_numpy()
+
+    fig, ax = plt.subplots(2)
+    ax[0].plot(cost,'r',lw=1.3)
+    #ax.semilogy(cost,'r',lw=1.3)
+    ax[0].set_ylabel("cost")
+    ax[0].set_xlabel("iteration")
+    plt.show()
+
+
+if evaluation == True:
+    #agent.restore(checkpoint_path)
+    prob_config['random_mesh'] = False
+
+    ## print
+    import time
+    prob_config['num_random_ref'] = 0
+    episode_cost = 0
+    done = False
+    obs = env.reset(swap=True)    #env.reset has an optional parameter called swap, to determine if you would like to swap your problem type
+                                  #from cutting out a random angle to a fixed mesh or vice versa.
+    #obs = env.reset_to_new_mesh(swap=True, newmesh=True)  #Similarly, env.reset_to_new_mesh will allow the user to set the swap variable as 
+                                                           #well as the newmesh variable.  Setting newmesh=True will change the mesh that
+                                                           #policy evaluates on to the mesh given by mesh_name_two in problem configuration.
+    print("Num. Elems. = ", env.mesh.GetNE())
+    env.render()
+    rlcost = 0
+    rlactions = []
+    headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'Cost']#, 'L2_Error', 'H1_Error']
+    rows = []
+    obs_header = ['N', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'Average_Order']
+    obs_rows = []
+    while not done:
+        action = agent.compute_action(obs,explore=False)
+        #action = np.array([theta, rho])
+        #rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+        #            env.sum_of_dofs, env.global_error, episode_cost])#, env.L2error, env.H1error])
+        rlactions.append(action)
+        obs, reward, done, info = env.step(action)
+        episode_cost -= reward 
+        rlcost = episode_cost
+        print("step = ", env.k)
+        print("action = ", action)
+        print("Num. Elems. = ", env.mesh.GetNE())
+        print("episode cost = ", episode_cost)
+        print("Num of dofs = ", env.sum_of_dofs)
+        print("Global Error = ", env.global_error)
+        env.compute_error_values()
+        env.RenderHPmesh()
+        #rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+        #             env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
+    rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+                    env.sum_of_dofs, env.global_error, episode_cost])#, env.L2error, env.H1error])
+        #obs_rows.append(obs)
+        #time.sleep(0.05)
+        #env.RenderMesh()
+        #env.RenderHPmesh()
+
+    with open('datafile', 'w') as datafile:
+        write = csv.writer(datafile)
+        write.writerow(headers)
+        write.writerows(rows)
+    # with open('statsfile', 'w') as statsfile:
+    #     write = csv.writer(statsfile)
+    #     write.writerow(obs_header)
+    #     write.writerows(obs_rows)
+
+
+if data_deterministic_no_flagging == True:
+    headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'Cost']#, 'L2_Error', 'H1_Error']
+    rows = []
+    for j in range(10):
+        for k in range(10):
+            done = False
+            env.reset_to_new_mesh(newmesh=True)
+            theta = j / 10
+            rho = k / 10
+            episode_cost = 0.0
+            while not done:
+                action = np.array([theta, rho])
+                #rlactions.append(action)
+                obs, reward, done, info = env.step(action)
+                episode_cost -= reward 
+                rlcost = episode_cost
+                #print("step = ", env.k)
+                #print("action = ", action)
+                #print("Num. Elems. = ", env.mesh.GetNE())
+                #print("episode cost = ", episode_cost)
+                #print("Num of dofs = ", env.sum_of_dofs)
+                #print("Global Error = ", env.global_error)
+                #env.compute_error_values()
+                #rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+                #             env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
+                #obs_rows.append(obs)
+                #time.sleep(0.05)
+                #env.RenderMesh()
+                #env.RenderHPmesh()
+            
+            rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
+                            env.sum_of_dofs, env.global_error, episode_cost])#, env.L2error, env.H1error])
+
+    with open('datafile', 'w') as datafile:
+        write = csv.writer(datafile)
+        write.writerow(headers)
+        write.writerows(rows)
+
+
+
+        #with open('statsfile', 'w') as statsfile:
+        #    write = csv.writer(statsfile)
+        #    write.writerow(obs_header)
+        #    write.writerows(obs_rows)
+
+
+
+
+"""
+
+
 #env.RenderHPmesh()
 #env.reset()
 #env.RenderHPmesh()
@@ -79,105 +237,13 @@ agent = ppo.PPOTrainer(env="my_env", config=config)
 #env.RenderHPmesh()
 
 #env.reset()
-#env.RenderHPmesh()
-#env.reset()
-#env.RenderHPmesh()
-#env.reset()
-#env.RenderHPmesh()
-
-for j in range(1):
-    #env.Continuation(j)
-    episode = 0
-    checkpoint_episode = 0
-    for n in range(nbatches):
-        print("training batch %d of %d batches" % (n+1,nbatches))
-        result = agent.train()
-        episode += config['train_batch_size']
-        checkpoint_episode += config['train_batch_size']
-        episode_score = -result["episode_reward_mean"]
-        print ("Episode cost", episode_score)
-        # scores.append(episode_score)
-        # if n == 0:
-        #     avg_scores.append(episode_score)
-        # else:
-        #     avg_scores.append(avg_scores[-1] * 0.99 + episode_score*0.01)
-        
-        # drawnow(draw_fig)
-        if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
-            checkpoint_episode = 0
-            checkpoint_path = agent.save()
-            print(checkpoint_path)    
-
-root_path, _ = os.path.split(checkpoint_path)
-root_path, _ = os.path.split(root_path)
-csv_path = root_path + '/progress.csv'
-df = pd.read_csv(csv_path)
-cost = -df.episode_reward_mean.to_numpy()
-
-fig, ax = plt.subplots(2)
-ax[0].plot(cost,'r',lw=1.3)
-#ax.semilogy(cost,'r',lw=1.3)
-ax[0].set_ylabel("cost")
-ax[0].set_xlabel("iteration")
-plt.show()
+# env.RenderHPmesh()
+# env.reset()
+# env.RenderHPmesh()
+# env.reset()
+# env.RenderHPmesh()
 
 
-
-
-agent.restore(checkpoint_path)
-prob_config['random_mesh'] = False
-
-## print
-import time
-prob_config['num_random_ref'] = 0
-episode_cost = 0
-done = False
-#obs = env.reset()
-#env.RenderHPmesh()
-obs = env.reset_to_new_mesh()
-#obs = env.SwapProblemType()
-env.RenderHPmesh()
-print("Num. Elems. = ", env.mesh.GetNE())
-env.render()
-rlcost = 0
-rlactions = []
-
-
-
-headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'L2_Error', 'H1_Error']
-rows = []
-obs_header = ['N', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'Average_Order']
-obs_rows = []
-while not done:
-    action = agent.compute_action(obs,explore=False)
-    rlactions.append(action)
-    obs, reward, done, info = env.step(action)
-    episode_cost -= reward 
-    rlcost = episode_cost
-    print("step = ", env.k)
-    print("action = ", action)
-    print("Num. Elems. = ", env.mesh.GetNE())
-    print("episode cost = ", episode_cost)
-    print("Num of dofs = ", env.sum_of_dofs)
-    print("Global Error = ", env.global_error)
-    env.compute_error_values()
-    rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
-                 env.sum_of_dofs, env.global_error, env.L2error, env.H1error])
-    obs_rows.append(obs)
-    time.sleep(0.05)
-    #env.RenderMesh()
-    env.RenderHPmesh()
-
-with open('datafile', 'w') as datafile:
-    write = csv.writer(datafile)
-    write.writerow(headers)
-    write.writerows(rows)
-with open('statsfile', 'w') as statsfile:
-    write = csv.writer(statsfile)
-    write.writerow(obs_header)
-    write.writerows(obs_rows)
-
-"""
 agent.restore(checkpoint_path)
 prob_config['random_mesh'] = False
 
@@ -228,9 +294,7 @@ with open('statsfile2', 'w') as statsfile2:
     write.writerow(obs_header)
     write.writerows(obs_rows)
 
-"""
 
-"""
 costs = []
 #rlcosts = []
 actions = []
