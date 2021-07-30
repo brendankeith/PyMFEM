@@ -101,11 +101,7 @@ class PacmanProblem(gym.Env):
             self.RHS = mfem.ConstantCoefficient(0.0)
         else:
             omega = np.pi/2
-<<<<<<< HEAD
             scale = 0.1
-=======
-            scale = 0.0
->>>>>>> e07e3d02b7528c6ba41811317192db163db11484
             self.BC = RandomCoefficient(omega=omega, scale=scale)
             self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
@@ -635,7 +631,7 @@ class PacmanProblem(gym.Env):
                 self.k += 1
                 elements_to_h_refine = []
                 elements_to_p_refine = []
-                neighbor_table = self.mesh.ElementToElementTable()
+                #neighbor_table = self.mesh.ElementToElementTable()
                 element_error_list = []
 
                 for i in range(self.mesh.GetNE()):
@@ -707,7 +703,7 @@ class PacmanProblem(gym.Env):
                 self.errors = self.GetLocalErrors()
                 self.global_error = new_global_error
                 self.sum_of_dofs += self.fespace.GetTrueVSize()
-                # self.RenderHPmesh()
+                #self.RenderHPmesh()
                 #self.compute_error_values()
 
 
@@ -717,10 +713,10 @@ class PacmanProblem(gym.Env):
                 episode_cost += cost
             self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, episode_cost])
             #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
-        with open('datafile', 'w') as datafile:
-            write = csv.writer(datafile)
-            write.writerow(headers)
-            write.writerows(self.rows)
+        # with open('datafile', 'w') as datafile:
+        #     write = csv.writer(datafile)
+        #     write.writerow(headers)
+        #     write.writerows(self.rows)
         print("dofs = ", self.sum_of_dofs)
         print("Global error = ", self.global_error)
     
