@@ -100,7 +100,7 @@ class PacmanProblem(gym.Env):
             self.RHS = mfem.ConstantCoefficient(0.0)
         else:
             omega = np.pi/2
-            scale = 0.5
+            scale = 0.1
             self.BC = RandomCoefficient(omega=omega, scale=scale)
             self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
@@ -185,7 +185,7 @@ class PacmanProblem(gym.Env):
 
         if self.problem_type == 'Random':
             #omega = np.pi/2
-            scale = 1.0
+            scale = 0.1
             self.BC = RandomCoefficient(omega=self.curr_angle, scale=scale)
 
         self.Setup()
