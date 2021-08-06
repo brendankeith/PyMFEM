@@ -16,7 +16,7 @@ All steps below are done with python-3.6.3
    (b) cd PyMFEM
    (c) git checkout drl4marking
    (d) pip install -r requirements.txt (only if the required dependencies are not already installed)
-   (e) python setup.py --clean swig
+   (e) python setup.py clean --swig
    (f) python setup.py install --swig
    (g) python setup.py install --ext-only --mfem-prefix="topdir/mfem/mfem"
    (h) python setup.py install --skip-ext
