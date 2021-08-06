@@ -37,7 +37,7 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.RHS = RHSCoefficient()
         # self.observation_space = spaces.Box(low=np.array([-10,0.0,-np.inf,-np.inf,-np.inf,-np.inf]), high=np.array([10.0,1.0,np.inf,np.inf,np.inf,np.inf]), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
-        self.action_space = spaces.Box(low=np.array([-4.0, -4.0]), high=np.array([0.0, 0.0]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([-2.0, -1.0]), high=np.array([-1.0, 0.0]))
 
     def reset(self):
         self.time = random.uniform(-np.pi, np.pi)
@@ -94,7 +94,10 @@ class MovingLoadProblem(DeRefStationaryProblem):
             self.rolling_average_cost *= (self.k-1)/self.k
             self.rolling_average_cost += instantaneous_cost/self.k
         ## exit if taking too long
-        if num_dofs > self.strict_dof_threshold:
+        # if num_dofs > self.strict_dof_threshold:
+        #     cost += 1e3/max(1,self.k-10)**2
+        #     done = True
+        if random.uniform(0,1) < 0.05:
             done = True
         info = {'global_error':global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
         return obs, -cost, done, info
@@ -148,26 +151,23 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.sol_sock_RHS.send_solution(self.mesh, rhs_coeff)
 
     def UpdateMesh(self, action):
-        ref_tol = 10 ** action[0].item()
-        deref_tol = 10 ** (action[0].item() + action[1].item())
-        self.Refine(ref_tol)
-        self.Derefine(deref_tol)
+        num_elements = self.mesh.GetNE()
+        ref_threshold = 10 ** action[0].item() / sqrt(num_elements)
+        deref_threshold = 10 ** (action[0].item() + action[1].item()) / sqrt(num_elements)
+        self.Refine(ref_threshold)
+        self.Derefine(deref_threshold)
 
-    def Refine(self,rel_tol):
-        num_dofs = self.fespace.GetTrueVSize()
-        threshold = rel_tol / sqrt(num_dofs)
+    def Refine(self,threshold):
         self.GetNewErrors()
-        self.mesh.RefineByError(self.new_errors,threshold)
+        self.mesh.RefineByError(self.new_errors, threshold, -1, self.nc_limit)
         self.fespace.Update()
         self.x.Update()
         self.a.Update()
         self.b.Update()
     
-    def Derefine(self,rel_tol):
-        num_dofs = self.fespace.GetTrueVSize()
-        threshold = rel_tol / sqrt(num_dofs)
+    def Derefine(self,threshold):
         self.GetNewErrors()
-        self.mesh.DerefineByError(self.new_errors,threshold)
+        self.mesh.DerefineByError(self.new_errors, threshold, self.nc_limit)
         self.fespace.Update()
         self.x.Update()
         self.a.Update()

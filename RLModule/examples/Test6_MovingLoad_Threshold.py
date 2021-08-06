@@ -48,27 +48,37 @@ prob_config = {
 
 # env = MovingLoadProblem(**prob_config)
 # env.reset()
-# env.step(np.array([-2.0,-1.0]))
-# env.RenderRHS()
-# env.step(np.array([-2.0,-1.0]))
-# env.RenderRHS()
-# env.step(np.array([-2.0,-1.0]))
-# env.RenderRHS()
-# env.step(np.array([-2.0,-1.0]))
-# env.RenderRHS()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-1.0]))
+# env.RenderMesh()
 
 nbatches = 150
-checkpoint_period = 50
+checkpoint_period = 500
 
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = 200
 config['sgd_minibatch_size'] = 20
-config['rollout_fragment_length'] = 20
+config['rollout_fragment_length'] = 10
 config['num_workers'] = 6
 config['num_gpus'] = 0
 config['gamma'] = 1.0
 config['lr'] = 1e-4
-config['no_done_at_end'] = True
+# config['no_done_at_end'] = False
+# config['soft_horizon'] = True
+# config['horizon'] = 40
 
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
@@ -87,14 +97,16 @@ if train:
         episode += config['train_batch_size']
         checkpoint_episode += config['train_batch_size']
         episode_score = -result["episode_reward_mean"]
-        print ("Episode cost", episode_score)
-        if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
+        episode_length = result["episode_len_mean"]
+        print ("Mean episode cost:   %.3f" % episode_score)
+        print ("Mean episode length: %.3f" % episode_length)
+        if (checkpoint_episode >= checkpoint_period):
+        # if (checkpoint_episode >= checkpoint_period and n > 0.9*(nbatches-1)):
             checkpoint_episode = 0
             checkpoint_path = agent.save()
             print(checkpoint_path)
 else:
-    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-30_11-35-25opiheosk/checkpoint_000031/checkpoint-31'
-    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-06-30_14-01-52c7mieuut/checkpoint_000031/checkpoint-31'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-07-24_16-28-02typh4o46/checkpoint_000150/checkpoint-150'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
@@ -151,8 +163,8 @@ max_local_errors = np.array(max_local_errors)
 global_errors = np.array(global_errors)
 dofs = np.array(dofs)
 
-ax[1].semilogy(ref_thresholds,'r',lw=1.3,label='ref. thresh.')
-ax[1].semilogy(deref_thresholds,'b',lw=1.3,label='deref. thresh.')
+ax[1].plot(ref_thresholds,'r',lw=1.3,label='ref. thresh.')
+ax[1].plot(deref_thresholds,'b',lw=1.3,label='deref. thresh.')
 ax[1].set_ylabel("Threshold")
 ax[1].set_xlabel("Time step")
 ax[1].legend()
