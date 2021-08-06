@@ -88,11 +88,11 @@ class PacmanProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
-        self.problem_type = kwargs.get('problem_type', 'Exact')
-        if self.problem_type == 'Homogeneous':
+        self.BC_type = kwargs.get('BC_type', 'Exact')
+        if self.BC_type == 'Homogeneous':
             self.BC = mfem.ConstantCoefficient(0.0)
             self.RHS = mfem.ConstantCoefficient(1.0)
-        elif self.problem_type == 'Exact':
+        elif self.BC_type == 'Exact':
             self.BC = ExactCoefficient()
             self.RHS = mfem.ConstantCoefficient(0.0)
         else:
@@ -101,17 +101,8 @@ class PacmanProblem(gym.Env):
             self.BC = RandomCoefficient(omega=omega, scale=scale)
             self.RHS = mfem.ConstantCoefficient(0.0)
         self.coeff = mfem.ConstantCoefficient(1.0)
-        #self.BC = mfem.ConstantCoefficient(0.0)
-        #self.BC = ExactCoefficient()
-        #delattr(self, 'RHS')
-        #self.RHS = mfem.ConstantCoefficient(0.0)
-        #self.RHS = RHSCoefficient()
-        #self.RHS = mfem.ConstantCoefficient(1.0)
-        #self.coeff = mfem.ConstantCoefficient(1.0)
-        self.zero = mfem.ConstantCoefficient(0.0)
-        #self.ExactVal = ExactCoefficient()
-        #self.ExactGrad = ExactGradCoefficient(2)
 
+        self.zero = mfem.ConstantCoefficient(0.0)
         self.omega =  3 * np.pi / 2
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-3)
@@ -141,9 +132,6 @@ class PacmanProblem(gym.Env):
         self.initial_mesh = mesh
         self.initial_mesh_two = mesh_two
 
-        #self.mesh = ReentrantCorner(self.omega, self.meshfile)
-        #self.mesh_two = ReentrantCorner(self.omega, self.meshfile_two)
-
         self.zero_vector = mfem.Vector(self.dim)
         self.zero_vector.Assign(0.0)
         self.zerovector = mfem.VectorConstantCoefficient(self.zero_vector)
@@ -154,21 +142,13 @@ class PacmanProblem(gym.Env):
             self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
         elif self.mode == 'hp':
             self.action_space = spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,))
     
-    def reset(self, swap=False):
+    def reset(self):
         self.k = 0
         self.mesh = mfem.Mesh(self.initial_mesh)
-        if swap:
-            if self.mesh_type == 'RandomAngle':
-                self.mesh_type = 'Fixed'
-            else:
-                self.mesh_type = 'RandomAngle'
-
         if  self.mesh_type == 'RandomAngle':
             self.curr_angle = np.random.uniform(1/4, 3/4, 1).item() * np.pi
-            #self.curr_angle = 1/2 * np.pi
-            #print(curr_angle)
             self.mesh = ReentrantCorner(self.curr_angle, self.meshfile)
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
@@ -180,8 +160,7 @@ class PacmanProblem(gym.Env):
             for _ in range(self.num_unif_ref):
                 self.mesh.UniformRefinement()
 
-        if self.problem_type == 'Random':
-            #omega = np.pi/2
+        if self.BC_type == 'Random':
             scale = 0.1
             self.BC = RandomCoefficient(omega=self.curr_angle, scale=scale)
 
@@ -192,28 +171,18 @@ class PacmanProblem(gym.Env):
         obs = self.Errors2Observation(self.errors)
         self.global_error = GlobalError(self.errors)
         self.initial_error_estimate = self.global_error
-        #self.RenderHPmesh()
         return obs
     
-    def reset_to_new_mesh(self, mesh_type='Fixed', swap=False, newmesh=False):
+    def reset_to_new_mesh(self, mesh_type='Fixed', newmesh=False):
         self.k = 0
-        #self.mesh = mfem.Mesh(self.initial_mesh_two)
-        #self.initial_mesh = self.initial_mesh_two
-
         if newmesh == True:
             MeshFile = self.meshfile_two
         else:
             MeshFile = self.meshfile
 
-        if swap:
-            if self.mesh_type == 'RandomAngle':
-                self.mesh_type = 'Fixed'
-            else:
-                self.mesh_type = 'RandomAngle'
-
         if  mesh_type == 'RandomAngle':
             self.mesh = mfem.Mesh(MeshFile)
-            self.curr_angle = np.random.uniform(0, 2, 1).item() * np.pi
+            self.curr_angle = np.random.uniform(1/4, 3/4, 1).item() * np.pi
             self.mesh = ReentrantCorner(self.curr_angle, MeshFile)
             self.mesh.EnsureNCMesh()
             for _ in range(self.num_unif_ref):
@@ -319,11 +288,10 @@ class PacmanProblem(gym.Env):
     def Errors2Observation(self, errors):
         num_dofs = self.fespace.GetTrueVSize()
         stats = Statistics(self.errors, num_dofs=num_dofs)
-        #stats = Statistics(errors)
         #average_order = self.ComputeAverageOrder()
         #obs = [stats.nels, stats.mean, stats.variance, stats.skewness, stats.kurtosis, average_order]
         #obs = [self.sum_of_dofs, stats.mean, stats.variance, stats.skewness, stats.kurtosis, average_order]
-        obs = [self.sum_of_dofs / self.dof_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis, self.curr_angle]
+        obs = [self.sum_of_dofs / self.dof_threshold, stats.mean, stats.variance, stats.skewness, stats.kurtosis]#, self.curr_angle]
         return np.array(obs)
 
     def AssembleAndSolve(self):
@@ -340,11 +308,11 @@ class PacmanProblem(gym.Env):
         self.a.RecoverFEMSolution(X,self.b,self.x)
         self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
 
-    def SwapProblemType(self):
-        if self.problem_type == 'Homogeneous':
+    def SwapBCType(self):
+        if self.BC_type == 'Homogeneous':
             self.BC = ExactCoefficient()
             self.RHS = mfem.ConstantCoefficient(0.0)
-        elif self.problem_type == 'Exact':
+        elif self.BC_type == 'Exact':
             self.BC = mfem.ConstantCoefficient(0.0)
             self.RHS = mfem.ConstantCoefficient(1.0)
         return self.reset()
@@ -366,9 +334,7 @@ class PacmanProblem(gym.Env):
         sol_sock.send_text('keys ARjlmp*******' + " window_title '" + title)
 
     def UpdateMesh(self, action):
-        #rho = action['order'] # determine if we want to refine the order this time
-        #theta = action['space'].item() #refinement threshold
-        theta = action[0].item() #refinement threshold for h
+        theta = action[0].item()
         if self.mode == 'hp':
             rho = action[1].item() 
             rho = theta * rho
@@ -417,15 +383,12 @@ class PacmanProblem(gym.Env):
                 next_el = 1
                 if (i + next_el < self.mesh.GetNE()):
                     while (abs(element_error_list[i + next_el][1] - element_error_list[i][1]) < 1e-3):
-                    #while (element_error_list[i + next_el][1] * (1 - 1e-6) > element_error_list[i][1]):
                         mark_to_h_refine.append(element_error_list[i+next_el][0])
                         sum_cnt += element_error_list[i + next_el][1] * element_error_list[i + next_el][1]
                         next_el += 1
                         if (i + next_el == self.mesh.GetNE()):
                             break
                 i += next_el
-                #if (i == self.mesh.GetNE()):
-                #    break
                 
             elif (sum_cnt >= (1 - theta) * eta2):
                 h_done = True
@@ -446,7 +409,6 @@ class PacmanProblem(gym.Env):
                 next_el = 1
                 if (i + next_el < self.mesh.GetNE()):
                     while (abs(element_error_list[i + next_el][1] - element_error_list[i][1]) < 1e-3):
-                    #while (element_error_list[i + next_el][1] * (1 - 1e-6) > element_error_list[i][1]):
                         mark_to_p_refine.append(element_error_list[i+next_el][0])
                         sum_cnt += element_error_list[i + next_el][1] * element_error_list[i + next_el][1]
                         next_el += 1
@@ -458,10 +420,6 @@ class PacmanProblem(gym.Env):
                 
             elif (sum_cnt > (1 - rho) * eta2) and h_done:
                 break
-            #if(i > self.mesh.GetNE()):
-            #    break
-            #else:
-            #    mark_to_p_refine.append(element_error_list[i][0])
         mark_to_h_refine = np.unique(mark_to_h_refine).tolist()
         mark_to_p_refine = np.unique(mark_to_p_refine).tolist()
         return mark_to_h_refine, mark_to_p_refine
@@ -474,7 +432,7 @@ class PacmanProblem(gym.Env):
         element_error_list = []
         for i in range(self.mesh.GetNE()):
             element_error_list.append((i, self.errors[i]))
-        element_error_list.sort(key=lambda x:x[1])#, reverse=True)
+        element_error_list.sort(key=lambda x:x[1])
         cutoff_number_h = math.ceil(theta * (self.mesh.GetNE() - 1))
         cutoff_error_h = element_error_list[cutoff_number_h][1]*(1 - 1e-4)
         cutoff_number_p = math.ceil(rho * (self.mesh.GetNE() - 1))
@@ -608,26 +566,105 @@ class PacmanProblem(gym.Env):
                 physical_pts[i+2*j,:] = Tr.Transform(reference_pt)
         return physical_pts
     
-    def hpDeterministicPolicy(self, thetaDet):
+    def hpDeterministicPolicy(self, thetaDet=0.5, Distribution=False):
 
-        self.rows = []
-        headers = ['Theta', 'N', 'DoFs', 'Total DoFs', 'Error Estimate', 'Cost']#, 'L2 Error', 'H1 Error']
-        for T in range(100):
-            thetaDet = T / 100.
-            #thetaDet = 0.5
+        if Distribution:
+            self.rows = []
+            headers = ['Theta', 'N', 'DoFs', 'Total DoFs', 'Error Estimate', 'Cost']#, 'L2 Error', 'H1 Error']
+            for T in range(100):
+                thetaDet = T / 100.
+                self.reset_to_new_mesh(newmesh=True)
+                episode_cost = 0.0
+                while self.sum_of_dofs < self.dof_threshold:
+                    self.mesh.EnsureNodes()
+                    self.k += 1
+                    elements_to_h_refine = []
+                    elements_to_p_refine = []
+                    element_error_list = []
+
+                    for i in range(self.mesh.GetNE()):
+                        element_error_list.append((i, self.errors[i]))
+                    element_error_list.sort(key=lambda x:x[1], reverse=True)
+                    cutoff_number = math.ceil(thetaDet * (self.mesh.GetNE() - 1))
+                    cutoff_error = element_error_list[cutoff_number][1]*(1-1e-4)
+
+                    for i in range(self.mesh.GetNE()):
+
+                        vertex_coords = self.GetElementVertices(i)
+                        element_touching_corner = False
+                        curr_error = self.errors[i]
+
+                        if self.refinement_strategy == 'max':
+                            threshold = thetaDet * np.max(self.errors)
+                        else:
+                            threshold = cutoff_error
+                        if threshold < curr_error:
+                            for j in range(4):
+                                x = vertex_coords[j,0]
+                                y = vertex_coords[j,1]
+                                if abs(x) < 1e-10 and abs(y) < 1e-10:
+                                    element_touching_corner = True
+                            if(element_touching_corner):
+                                elements_to_h_refine.append(i)
+                            else:
+                                elements_to_p_refine.append(i)
+
+                    p_refine_elements = np.unique(elements_to_p_refine).tolist()
+                    for k in range(len(p_refine_elements)):
+                        current_element = p_refine_elements[k]
+                        current_order = self.fespace.GetElementOrder(current_element)
+                        self.fespace.SetElementOrder(current_element, current_order + 1)
+                    
+                    self.fespace.Update(False)
+                    self.x.Update()
+                    self.x.Assign(0.0)
+                    self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+                    # self.fespace.UpdatesFinished()
+                    self.a.Update()
+                    self.b.Update()
+
+                    elements_to_h_refine = intArray(elements_to_h_refine)
+                    self.mesh.GeneralRefinement(elements_to_h_refine)
+                    
+                    self.fespace.Update(False)
+                    self.x.Update()
+                    self.x.Assign(0.0)
+                    self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
+                    # self.fespace.UpdatesFinished()
+                    self.a.Update()
+                    self.b.Update()
+
+                    self.CloseMesh()
+
+                    self.AssembleAndSolve()
+
+                    new_global_error = GlobalError(self.errors)
+                    cost = np.log(new_global_error / self.global_error)
+                    self.errors = self.GetLocalErrors()
+                    self.global_error = new_global_error
+                    self.sum_of_dofs += self.fespace.GetTrueVSize()
+
+                    if self.sum_of_dofs > self.dof_threshold:
+                        cost = 0.0
+
+                    episode_cost += cost
+                self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, episode_cost])
+            with open('datafile', 'w') as datafile:
+                write = csv.writer(datafile)
+                write.writerow(headers)
+                write.writerows(self.rows)
+            print("dofs = ", self.sum_of_dofs)
+            print("Global error = ", self.global_error)
+        else:
+            self.rows = []
+            headers = ['Theta', 'N', 'DoFs', 'Total DoFs', 'Error Estimate', 'Cost']#, 'L2 Error', 'H1 Error']
             self.reset_to_new_mesh(newmesh=True)
-            #self.RenderHPmesh()
             episode_cost = 0.0
             while self.sum_of_dofs < self.dof_threshold:
                 self.mesh.EnsureNodes()
-
-                #thetaDet = T / 10.
-                #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error])#, self.L2error, self.H1error])
-
                 self.k += 1
                 elements_to_h_refine = []
                 elements_to_p_refine = []
-                #neighbor_table = self.mesh.ElementToElementTable()
                 element_error_list = []
 
                 for i in range(self.mesh.GetNE()):
@@ -656,14 +693,6 @@ class PacmanProblem(gym.Env):
                             elements_to_h_refine.append(i)
                         else:
                             elements_to_p_refine.append(i)
-                            # neighbor_row = neighbor_table.GetRow(i)
-                            # row_size = neighbor_table.RowSize(i)
-                            # neighbor_array = intArray(row_size)
-                            # neighbor_array.Assign(neighbor_row)
-                            # for l in range(row_size):
-                            #     neighbor_order = self.fespace.GetElementOrder(neighbor_array[l])
-                            #     if neighbor_order <= self.fespace.GetElementOrder(i):
-                            #         elements_to_p_refine.append(neighbor_array[l])
 
                 p_refine_elements = np.unique(elements_to_p_refine).tolist()
                 for k in range(len(p_refine_elements)):
@@ -699,22 +728,20 @@ class PacmanProblem(gym.Env):
                 self.errors = self.GetLocalErrors()
                 self.global_error = new_global_error
                 self.sum_of_dofs += self.fespace.GetTrueVSize()
-                #self.RenderHPmesh()
-                #self.compute_error_values()
-
 
                 if self.sum_of_dofs > self.dof_threshold:
                     cost = 0.0
 
                 episode_cost += cost
+            self.RenderHPmesh()
             self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, episode_cost])
-            #self.rows.append([thetaDet, self.mesh.GetNE(), self.fespace.GetTrueVSize(), self.sum_of_dofs, self.global_error, self.L2error, self.H1error])
-        # with open('datafile', 'w') as datafile:
-        #     write = csv.writer(datafile)
-        #     write.writerow(headers)
-        #     write.writerows(self.rows)
-        print("dofs = ", self.sum_of_dofs)
-        print("Global error = ", self.global_error)
+            with open('datafile', 'w') as datafile:
+                write = csv.writer(datafile)
+                write.writerow(headers)
+                write.writerows(self.rows)
+            print("dofs = ", self.sum_of_dofs)
+            print("Global error = ", self.global_error)
+
     
     def compute_error_values(self):
         self.ExactVal = ExactCoefficient()
@@ -763,49 +790,3 @@ class PacmanProblem(gym.Env):
             self.dof_threshold = self.dof_threshold * 2
         else:
             self.dof_threshold = self.dof_threshold * 2
-                
-                    
-
-
-
-
-
-
-
-
-    
-"""
-L2_FECollection ordersfec(0,dim);
-FiniteElementSpace ordersfes(mesh,&ordersfec);
-GridFunction orders(&ordersfes);
-for (int i = 0;i<mesh->GetNE(); i++)
-{
-  Array<int> elem_dofs;
-  ordersfes.GetElementDofs(i,elem_dofs);
-  MFEM_VERIFY(elem_dofs.Size() == 1,"Wrong elem_dofs size");
-  orders[elem_dofs[0]] = fespace->GetElementOrder(i);
-}
-socketstream orders_sock(vishost, visport);
-orders_sock.precision(8);
-orders_sock << "solution\n" << *mesh << orders << flush;
-sol_sock.send_solution(self.mesh, prolonged)
-"""
-
-
-"""
-        for i in range(self.mesh.GetNE()):
-            curr_err = self.errors[i]
-            if curr_err >= cutoff_error_h:
-                mark_to_h_refine.append(i)
-        for i in range(self.mesh.GetNE()):
-            if i not in mark_to_h_refine:
-                curr_err = self.errors[i]
-                if curr_err >= cutoff_error_p:
-                    mark_to_p_refine.append(i)
-        return mark_to_h_refine, mark_to_p_refine
-"""
-
-
-"""
-
-"""
