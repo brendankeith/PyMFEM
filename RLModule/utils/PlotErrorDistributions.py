@@ -43,3 +43,16 @@ ax.set_xlabel('Refinement')
 
 plt.show()
 
+
+
+
+# print(np.log(env.global_errors[1][-1]/env.global_errors[1][-5])/np.log(env.global_errors[0][-5]/env.global_errors[0][-1]))
+# print(np.log(env.global_errors[2][-1]/env.global_errors[2][-5])/np.log(env.global_errors[0][-5]/env.global_errors[0][-1]))
+# print(np.log(env.global_errors[3][-1]/env.global_errors[3][-5])/np.log(env.global_errors[0][-5]/env.global_errors[0][-1]))
+
+
+# plt.title('Errors')
+# plt.loglog(env.global_errors[0], env.global_errors[1], 'r-', label='|| grad(u - u_h)||')
+# plt.loglog(env.global_errors[0], env.global_errors[2], 'b-', label='|| y - grad(u_h)||')
+# plt.loglog(env.global_errors[0], env.global_errors[3], 'k-', label='|| y_ZZ - grad(u_h)||')
+# plt.legend()
