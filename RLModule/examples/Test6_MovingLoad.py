@@ -57,11 +57,8 @@ prob_config = {
 # env.step(np.array([0.9,0.1]))
 # env.RenderRHS()
 
-total_episodes = 4000
-batch_size = 32
-checkpoint_period = 50
-
-nbatches = int(total_episodes/batch_size)
+nbatches = 50
+checkpoint_period = 100
 
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = 200
