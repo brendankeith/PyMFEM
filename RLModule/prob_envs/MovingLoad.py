@@ -6,8 +6,10 @@ from utils.StatisticsAndCost import Statistics, GlobalError
 from prob_envs.StationaryProblem import DeRefStationaryProblem
 import random
 from gym import spaces
+from numba import cfunc, carray
 
-def ball(pt, t):
+@cfunc(mfem.scalar_sig_t)
+def ball(pt, t, sdim):
     alpha = 0.01
     r0 = 0.25
     r00 = 0.1
@@ -34,7 +36,8 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.strict_dof_threshold = kwargs.get('strict_dof_threshold',10*self.dof_threshold)
         self.delta_t = 0.05
         delattr(self, 'RHS')
-        self.RHS = RHSCoefficient()
+        self.RHS = mfem.NumbaFunction(ball, 2, True).GenerateCoefficient()
+        # self.RHS = RHSCoefficient()
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reset(self):
