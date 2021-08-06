@@ -15,41 +15,38 @@ from numba import cfunc, carray
 import numpy as np
 
 @cfunc(mfem.scalar_sig)
-def Exact(pt, sdim):
+def LShapedExact(pt, sdim):
     x = pt[0]
     y = pt[1]
     r = sqrt(x*x + y*y)
     alpha = 2. / 3.
-
     theta = atan2(y, x)
-    if y == 0 and x < 0:
-        theta += 2 * np.pi
-    if y < 0:
-        theta += 2 * np.pi
-    if y == 0 and x == -1:
-        theta = np.pi
+    if x > 0 and abs(y) < 1e-6:
+        theta = 0.0
+    elif y < 0:
+        theta += 2*np.pi
     return r**alpha * sin(alpha * theta)
 
 @cfunc(mfem.vector_sig)
-def ExactGrad(pt, out, sdim, vdim):
+def LShapedExactGrad(pt, out, sdim, vdim):
     out_array = carray(out, (vdim, ))
     x = pt[0]
     y = pt[1]
     alpha = 2. / 3.
-    if (x == 0 and y == 0):
-        x+=1e-12
-        y+=1e-12
     r = sqrt(x*x + y*y)
+    if (r == 0):
+        r+=1e-12
     theta = atan2(y, x)
-    if y == 0 and x < 0:
-       theta += 2 * np.pi
-    if y < 0:
-       theta += 2 * np.pi
-    if y == 0 and x == -1:
-       theta = np.pi
+    if x > 0 and abs(y) < 1e-6:
+        theta = 0.0
+    elif y < 0:
+        theta += 2*np.pi
     rx = x/r
     ry = y/r
     thetax = - y / r**2
     thetay =   x / r**2
+    # r2alpha = r**(2*alpha)
+    # out_array[0] = alpha * x * sin(alpha*theta) / r2alpha - alpha * y * cos(alpha*theta) / r2alpha
+    # out_array[1] = alpha * y * sin(alpha*theta) / r2alpha + alpha * x * cos(alpha*theta) / r2alpha
     out_array[0] = alpha * r**(alpha - 1.) *(rx*sin(alpha*theta) + r*thetax * cos(alpha*theta))
     out_array[1] = alpha * r**(alpha - 1.) *(ry*sin(alpha*theta) + r*thetay * cos(alpha*theta))

@@ -16,6 +16,9 @@ from scipy.sparse.linalg import dsolve
 
 import pandas as pd
 
+from utils.Solution_LShaped import *
+from utils.Solution_SinSin import *
+from utils.ExactErrorEstimators import *
 
 class StationaryProblem(gym.Env):
 
@@ -33,13 +36,24 @@ class StationaryProblem(gym.Env):
             self.BC = WavefrontSolutionCoefficient()
             self.RHS = WavefrontRHSCoefficient()
             self.coeff = mfem.ConstantCoefficient(1.0)
-        elif (self.problem_type == 'exact'):
-            self.BC = mfem.NumbaFunction(Exact, 2).GenerateCoefficient()
+        elif (self.problem_type == 'lshaped'):
+            self.BC = mfem.NumbaFunction(LShapedExact, 2).GenerateCoefficient()
             self.RHS = mfem.ConstantCoefficient(0.0)
+            self.GradSoln = mfem.VectorNumbaFunction(LShapedExactGrad, 2, 2).GenerateCoefficient()
+            self.coeff = mfem.ConstantCoefficient(1.0)
+        elif (self.problem_type == 'sinsin'):
+            self.BC = mfem.NumbaFunction(SinSinExact, 2).GenerateCoefficient()
+            self.RHS = mfem.NumbaFunction(SinSinExactLaplace, 2).GenerateCoefficient()
+            self.GradSoln = mfem.VectorNumbaFunction(SinSinExactGrad, 2, 2).GenerateCoefficient()
             self.coeff = mfem.ConstantCoefficient(1.0)
         else:
             print("Problem type not recognized.  Exiting.")
             exit()
+        
+        if (self.problem_type != 'ZZ') and (not hasattr(self, 'GradSoln')):
+            print("Cannot measure H1 error for this problem.  Exiting.")
+            exit()
+
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-3)
         self.dof_threshold = kwargs.get('dof_threshold',5e4)
@@ -160,9 +174,10 @@ class StationaryProblem(gym.Env):
             self.estimator =  mfem.ZienkiewiczZhuEstimator(integ, self.x, self.flux_fespace,
                                                         own_flux_fes = False)
         else:
-            print("Error estimator not recognized.  Exiting.")
-            exit()
-        self.refiner = mfem.ThresholdRefiner(self.estimator)
+            self.estimator = H10ErrorEstimator(self.x, self.GradSoln)
+            # print("Error estimator not recognized.  Exiting.")
+            # exit()
+        # self.refiner = mfem.ThresholdRefiner(self.estimator)
 
     def GetObservation(self):
         num_dofs = self.fespace.GetTrueVSize()
@@ -176,6 +191,8 @@ class StationaryProblem(gym.Env):
     def AssembleAndSolve(self):
         self.a.Assemble()
         self.b.Assemble()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
         ess_tdof_list = intArray()
         self.fespace.GetEssentialTrueDofs(self.ess_bdr, ess_tdof_list)
         A = mfem.OperatorPtr()
@@ -183,14 +200,16 @@ class StationaryProblem(gym.Env):
         self.a.FormLinearSystem(ess_tdof_list, self.x, self.b, A, X, B, 1)
         AA = mfem.OperatorHandle2SparseMatrix(A)
         M = mfem.GSSmoother(AA)
-        mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
+        mfem.CG(AA, B, X, -1, 2000, 1e-30, 0.0)
+        # mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
-        self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
+        self.solution_norm = self.x.ComputeGradError(self.zerovector) + 1e-12
+        # self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
 
     def GetLocalErrors(self):
         self.estimator.Reset()
-        mfem_errors = self.estimator.GetLocalErrors()
-        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())])# / self.solution_norm
+        self.mfem_errors = self.estimator.GetLocalErrors()
+        errors = np.array([self.mfem_errors[i] for i in range(self.mesh.GetNE())])# / self.solution_norm
         return errors
 
     def RenderMesh(self):
@@ -207,13 +226,21 @@ class StationaryProblem(gym.Env):
         theta = action.item() # refinement threshold
         self.Refine(theta)
 
+    # def Refine(self, theta):
+    #     self.refiner.Reset()
+    #     self.refiner.SetTotalErrorFraction(theta)
+    #     self.refiner.Apply(self.mesh)
+    #     self.fespace.Update()
+    #     self.x.Update()
+    #     # self.fespace.UpdatesFinished()
+    #     self.a.Update()
+    #     self.b.Update()
+
     def Refine(self, theta):
-        self.refiner.Reset()
-        self.refiner.SetTotalErrorFraction(theta)
-        self.refiner.Apply(self.mesh)
+        threshold = theta * np.max(self.errors)
+        self.mesh.RefineByError(self.mfem_errors,threshold, -1, self.nc_limit)
         self.fespace.Update()
         self.x.Update()
-        # self.fespace.UpdatesFinished()
         self.a.Update()
         self.b.Update()
 
