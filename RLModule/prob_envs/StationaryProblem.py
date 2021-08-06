@@ -1,20 +1,32 @@
+from mfem._ser.coefficient import ConstantCoefficient
 import os
 from os.path import expanduser, join
 import gym
 from gym import spaces
 import numpy as np
+from tensorflow.python.ops.gen_array_ops import Const
 import mfem.ser as mfem
 from mfem.ser import intArray
 from utils.StatisticsAndCost import Statistics, GlobalError
 from utils.solution_wavefront import *
+from utils.Solution_LShaped import *
+
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import dsolve
 
 import pandas as pd
+
+from utils.Solution_LShaped import *
+from utils.Solution_SinSin import *
+from utils.ExactErrorEstimators import *
 
 class StationaryProblem(gym.Env):
 
     def __init__(self,**kwargs):
         super().__init__()
+        self.nc_limit = 1
         self.problem_type = kwargs.get('problem_type','laplace')
+        self.estimator_type = kwargs.get('estimator_type', 'ZZ')
 
         if (self.problem_type == 'laplace'):
             self.BC = mfem.ConstantCoefficient(0.0)
@@ -24,9 +36,24 @@ class StationaryProblem(gym.Env):
             self.BC = WavefrontSolutionCoefficient()
             self.RHS = WavefrontRHSCoefficient()
             self.coeff = mfem.ConstantCoefficient(1.0)
+        elif (self.problem_type == 'lshaped'):
+            self.BC = mfem.NumbaFunction(LShapedExact, 2).GenerateCoefficient()
+            self.RHS = mfem.ConstantCoefficient(0.0)
+            self.GradSoln = mfem.VectorNumbaFunction(LShapedExactGrad, 2, 2).GenerateCoefficient()
+            self.coeff = mfem.ConstantCoefficient(1.0)
+        elif (self.problem_type == 'sinsin'):
+            self.BC = mfem.NumbaFunction(SinSinExact, 2).GenerateCoefficient()
+            self.RHS = mfem.NumbaFunction(SinSinExactLaplace, 2).GenerateCoefficient()
+            self.GradSoln = mfem.VectorNumbaFunction(SinSinExactGrad, 2, 2).GenerateCoefficient()
+            self.coeff = mfem.ConstantCoefficient(1.0)
         else:
             print("Problem type not recognized.  Exiting.")
             exit()
+        
+        if (self.problem_type != 'ZZ') and (not hasattr(self, 'GradSoln')):
+            print("Cannot measure H1 error for this problem.  Exiting.")
+            exit()
+
         self.optimization_type = kwargs.get('optimization_type','error_threshold')
         self.error_threshold = kwargs.get('error_threshold',1e-3)
         self.dof_threshold = kwargs.get('dof_threshold',5e4)
@@ -50,6 +77,8 @@ class StationaryProblem(gym.Env):
         self.zero_vector = mfem.Vector(self.dim)
         self.zero_vector.Assign(0.0)
         self.zerovector = mfem.VectorConstantCoefficient(self.zero_vector)
+
+        self.global_errors = [ [] for _ in range(4)]
     
     def reset(self, save_errors=False):
         if save_errors:
@@ -141,10 +170,14 @@ class StationaryProblem(gym.Env):
         self.ess_bdr.Assign(1)
         self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
         self.flux_fespace = mfem.FiniteElementSpace(self.mesh, fec, dim)
-        self.estimator =  mfem.ZienkiewiczZhuEstimator(integ, self.x, self.flux_fespace,
-                                                       own_flux_fes = False)
-
-        self.refiner = mfem.ThresholdRefiner(self.estimator)
+        if self.estimator_type == 'ZZ':
+            self.estimator =  mfem.ZienkiewiczZhuEstimator(integ, self.x, self.flux_fespace,
+                                                        own_flux_fes = False)
+        else:
+            self.estimator = H10ErrorEstimator(self.x, self.GradSoln)
+            # print("Error estimator not recognized.  Exiting.")
+            # exit()
+        # self.refiner = mfem.ThresholdRefiner(self.estimator)
 
     def GetObservation(self):
         num_dofs = self.fespace.GetTrueVSize()
@@ -158,6 +191,8 @@ class StationaryProblem(gym.Env):
     def AssembleAndSolve(self):
         self.a.Assemble()
         self.b.Assemble()
+        self.x.Assign(0.0)
+        self.x.ProjectBdrCoefficient(self.BC, self.ess_bdr)
         ess_tdof_list = intArray()
         self.fespace.GetEssentialTrueDofs(self.ess_bdr, ess_tdof_list)
         A = mfem.OperatorPtr()
@@ -165,14 +200,16 @@ class StationaryProblem(gym.Env):
         self.a.FormLinearSystem(ess_tdof_list, self.x, self.b, A, X, B, 1)
         AA = mfem.OperatorHandle2SparseMatrix(A)
         M = mfem.GSSmoother(AA)
-        mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
+        mfem.CG(AA, B, X, -1, 2000, 1e-30, 0.0)
+        # mfem.PCG(AA, M, B, X, -1, 200, 1e-12, 0.0)
         self.a.RecoverFEMSolution(X,self.b,self.x)
-        self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
+        self.solution_norm = self.x.ComputeGradError(self.zerovector) + 1e-12
+        # self.solution_norm = self.x.ComputeH1Error(self.zero, self.zerovector)
 
     def GetLocalErrors(self):
         self.estimator.Reset()
-        mfem_errors = self.estimator.GetLocalErrors()
-        errors = np.array([mfem_errors[i] for i in range(self.mesh.GetNE())]) / self.solution_norm
+        self.mfem_errors = self.estimator.GetLocalErrors()
+        errors = np.array([self.mfem_errors[i] for i in range(self.mesh.GetNE())])# / self.solution_norm
         return errors
 
     def RenderMesh(self):
@@ -189,13 +226,21 @@ class StationaryProblem(gym.Env):
         theta = action.item() # refinement threshold
         self.Refine(theta)
 
+    # def Refine(self, theta):
+    #     self.refiner.Reset()
+    #     self.refiner.SetTotalErrorFraction(theta)
+    #     self.refiner.Apply(self.mesh)
+    #     self.fespace.Update()
+    #     self.x.Update()
+    #     # self.fespace.UpdatesFinished()
+    #     self.a.Update()
+    #     self.b.Update()
+
     def Refine(self, theta):
-        self.refiner.Reset()
-        self.refiner.SetTotalErrorFraction(theta)
-        self.refiner.Apply(self.mesh)
+        threshold = theta * np.max(self.errors)
+        self.mesh.RefineByError(self.mfem_errors,threshold, -1, self.nc_limit)
         self.fespace.Update()
         self.x.Update()
-        # self.fespace.UpdatesFinished()
         self.a.Update()
         self.b.Update()
 
@@ -204,6 +249,56 @@ class StationaryProblem(gym.Env):
         df_tmp = pd.DataFrame({str(num_dofs):self.errors})
         self.df_ErrorHistory = pd.concat([self.df_ErrorHistory,df_tmp], axis=1)
         self.df_ErrorHistory.to_csv(self.error_file_name, index=False)
+
+    def GlobalErrorEstimator(self):
+        alpha = 1
+        HDIVfec = mfem.RT_FECollection(self.order-1, self.dim)
+        HDIVfespace = mfem.FiniteElementSpace(self.mesh, HDIVfec)
+        b = mfem.LinearForm(HDIVfespace)
+        a = mfem.BilinearForm(HDIVfespace)
+        y = mfem.GridFunction(HDIVfespace)
+
+        grad_u_h = mfem.GradientGridFunctionCoefficient(self.x)
+        b1 = mfem.VectorFEDomainLFIntegrator(grad_u_h)
+        minus_f = mfem.ProductCoefficient(-alpha,self.RHS)
+        b2 = mfem.VectorFEDomainLFDivIntegrator(minus_f)
+        b.AddDomainIntegrator(b1)
+        b.AddDomainIntegrator(b2)
+        b.Assemble()
+
+        alpha_coeff = mfem.ConstantCoefficient(alpha)
+        one = mfem.ConstantCoefficient(1.0)
+        a.AddDomainIntegrator(mfem.DivDivIntegrator(alpha_coeff))
+        a.AddDomainIntegrator(mfem.VectorFEMassIntegrator(one))
+        a.Assemble()
+
+        A = mfem.OperatorPtr()
+        B = mfem.Vector()
+        X = mfem.Vector()
+        ess_tdof_list = intArray()
+        a.FormLinearSystem(ess_tdof_list, y, b, A, X, B)
+
+        AA = mfem.OperatorHandle2SparseMatrix(A)
+        M = mfem.GSSmoother(AA)
+        mfem.PCG(AA, M, B, X, 0, 10000, 1e-12, 0.0);
+
+        a.RecoverFEMSolution(X, b, y)
+
+        global_error_estimate = y.ComputeL2Error(grad_u_h)
+        print("global error estimate = ", global_error_estimate)
+
+        grad_u = mfem.VectorNumbaFunction(ExactGrad, self.mesh.SpaceDimension(), self.mesh.Dimension()).GenerateCoefficient()
+        global_error = self.x.ComputeH1Error(self.BC,grad_u)
+        print("global error = ", global_error)
+
+        ZZ_error_estimate = sqrt(sum(np.array(self.errors) ** 2))
+        print(" ZZ error estimate = ", ZZ_error_estimate)
+
+        self.global_errors[0].append(self.fespace.GetTrueVSize())
+        self.global_errors[1].append(global_error)
+        self.global_errors[2].append(global_error_estimate/6)
+        self.global_errors[3].append(ZZ_error_estimate)
+        
 
 class DeRefStationaryProblem(StationaryProblem):
 
