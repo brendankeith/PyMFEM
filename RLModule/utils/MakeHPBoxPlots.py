@@ -3,20 +3,20 @@ import pandas as pd
 from pylab import *
 import seaborn as sns
 
-file_name = "./RLModule/output_data/Deterministic_Policy_with_marking.csv"
-file_name_2 = "./RLModule/output_data/No_Marking_Deterministic_data.csv"
-file_name_3 = "./RLModule/output_data/Random_Angle_Training.csv"
-file_name_4 = './RLModule/output_data/Exact_Random_Angle_Training.csv'
-file_name_5 = './RLModule/output_data/Exact_Deterministic_Data.csv'
-file_name_6 = './RLModule/output_data/Exact_Deterministic_Data_No_Flagging.csv'
-file_name_7 = './RLModule/output_data/Exact_Random_Angle_Averages.csv'
-file_name_8 = './RLModule/output_data/Exact_Pacman_Random_Angle_Training.csv'
-file_name_9 = './RLModule/output_data/Exact_Pacman_Deterministic_No_Flagging.csv'
-file_name_10 = './RLModule/output_data/Exact_Pacman_Deterministic_Flagging.csv'
-file_name_11 = './RLModule/output_data/L_Shaped_Random_Angle_Training_No_Knowledge.csv'
-file_name_12 = './RLModule/output_data/Pacman_Random_Angle_Training_No_Knowledge.csv'
-file_name_13 = './RLModule/output_data/Random_L_Shape_Random_Angle_Exact_No_Angle_Observation.csv'
-file_name_14 = './RLModule/output_data/Random_Pacman_Random_Angle_Exact_No_Angle_Observation.csv'
+file_name = "./RLModule/hp_sample_data/Deterministic_Policy_with_marking.csv"
+file_name_2 = "./RLModule/hp_sample_data/No_Marking_Deterministic_data.csv"
+file_name_3 = "./RLModule/hp_sample_data/Random_Angle_Training.csv"
+file_name_4 = './RLModule/hp_sample_data/Exact_Random_Angle_Training.csv'
+file_name_5 = './RLModule/hp_sample_data/Exact_Deterministic_Data.csv'
+file_name_6 = './RLModule/hp_sample_data/Exact_Deterministic_Data_No_Flagging.csv'
+file_name_7 = './RLModule/hp_sample_data/Exact_Random_Angle_Averages.csv'
+file_name_8 = './RLModule/hp_sample_data/Exact_Pacman_Random_Angle_Training.csv'
+file_name_9 = './RLModule/hp_sample_data/Exact_Pacman_Deterministic_No_Flagging.csv'
+file_name_10 = './RLModule/hp_sample_data/Exact_Pacman_Deterministic_Flagging.csv'
+file_name_11 = './RLModule/hp_sample_data/L_Shaped_Random_Angle_Training_No_Knowledge.csv'
+file_name_12 = './RLModule/hp_sample_data/Pacman_Random_Angle_Training_No_Knowledge.csv'
+file_name_13 = './RLModule/hp_sample_data/Random_L_Shape_Random_Angle_Exact_No_Angle_Observation.csv'
+file_name_14 = './RLModule/hp_sample_data/Random_Pacman_Random_Angle_Exact_No_Angle_Observation.csv'
 df1 = pd.read_csv(file_name)['Cost'].to_numpy()
 df2 = pd.read_csv(file_name_2)['Cost'].to_numpy()
 df3 = pd.read_csv(file_name_3)['Cost'].to_numpy()
