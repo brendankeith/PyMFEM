@@ -1,33 +1,54 @@
 # Installation Guidelines for the drl4marking branch on LC (From Andrew August 6th 2021)
 
-# use conda to create a venv with the correct python version
+# use conda to create a venv with the correct python version - in /usr/workspace
 
 conda create --name py364 python=3.6.4
 conda actiate py364
 cd /usr/workspace/gillette/venvs/
 python -m venv drl4mkg
 conda deactivate
-source drl4mkg/bin/activate
+source /usr/workspace/gillette/venvs/drl4mkg/bin/activate
 python --version   # Python 3.6.4 :: Anaconda, Inc.
 pip install --upgrade pip
 pip install -r drl-pip-req.txt # contents of the txt file are copied at the bottom of this file
 pip install mfem
 
-# now make MFEM using drl4marking branch
+# now make MFEM using drl4marking branch - in /usr/workspace
 
 mkdir /usr/workspace/gillette/venvs/mfem4drl
-cd /usr/workspace/gillette/venvs/mfem4drl
+cd /usr/workspace/gillette/venvs/mfem4drl 
 git clone https://github.com/mfem/mfem.git
 cd mfem/
 git checkout drl4marking
 make serial MFEM_SHARED=YES -j
 make install
 
-# now go to PyMFEM directory
+# install swig using spack; end of installation will state build path in terminal window
 
+cd /g/g12/gillette/projects/drl_SI
+git clone https://github.com/spack/spack.git
+cd spack/
+./bin/spack install swig
+
+# export swig path, then do PyMFEM build
+
+export PATH=/g/g12/gillette/projects/drl_SI/spack/opt/spack/linux-rhel7-sandybridge/gcc-4.9.3/swig-4.0.2-6ctyo2poemmm5m332zmfp6srgeixjbbn/bin:$PATH
 cd ~/projects/drl_SI/PyMFEM/
 python setup.py clean --swig 
+python setup.py install --swig
 python setup.py install --ext-only --mfem-prefix="/usr/workspace/gillette/venvs/mfem4drl/mfem/mfem"   
+python setup.py install --skip-ext
+
+# sample usage from LC log in (adjust path names as needed)
+
+cd /g/g12/gillette/projects/drl_SI/PyMFEM/RLModule/examples
+salloc -ppdebug
+conda deactivate
+source /usr/workspace/gillette/venvs/drl4mkg/bin/activate
+export PYTHONPATH="/g/g12/gillette/projects/drl_SI/PyMFEM/RLModule"
+export PATH=/g/g12/gillette/projects/drl_SI/spack/opt/spack/linux-rhel7-sandybridge/gcc-4.9.3/swig-4.0.2-6ctyo2poemmm5m332zmfp6srgeixjbbn/bin:$PATH
+python Test9_Reentrant_Corner.py
+
 
 # the file drl-pip-req.txt should conatin the following:
 

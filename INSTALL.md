@@ -21,8 +21,6 @@ All steps below are done with python-3.6.3
    (g) python setup.py install --ext-only --mfem-prefix="topdir/mfem/mfem"
    (h) python setup.py install --skip-ext
 
-   python setup.py build_ext --inplace
-
 Note: If you want to install from github repo instead from a local mfem branch you skip step 1 and replace   
 step 2(g) with python setup.py install --ext-only --mfem-branch drl4marking
    
