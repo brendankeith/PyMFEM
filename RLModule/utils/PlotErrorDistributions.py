@@ -9,7 +9,7 @@ from prob_envs.StationaryProblem import StationaryProblem
 sns.set()
 # sns.set_context("notebook")
 # sns.set_context("paper")
-sns.set_context("paper", font_scale=1.25)
+sns.set_context("paper", font_scale=1.5)
 # sns.set_context("talk")
 sns.set_style("ticks")
 
@@ -18,7 +18,7 @@ plt.rc('font', family='serif')
 plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
 #### PARAMETERS
-fig = 'b' # 'a' or 'b'
+fig = 'a' # 'a' or 'b'
 num_refs = 6
 num_unif_ref = 1
 recompute = True

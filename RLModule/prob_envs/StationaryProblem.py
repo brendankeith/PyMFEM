@@ -50,7 +50,7 @@ class StationaryProblem(gym.Env):
             print("Problem type not recognized.  Exiting.")
             exit()
         
-        if (self.problem_type != 'ZZ') and (not hasattr(self, 'GradSoln')):
+        if (self.estimator_type != 'ZZ') and (not hasattr(self, 'GradSoln')):
             print("Cannot measure H1 error for this problem.  Exiting.")
             exit()
 
