@@ -12,6 +12,7 @@ python --version   # Python 3.6.4 :: Anaconda, Inc.
 pip install --upgrade pip
 pip install -r drl-pip-req.txt # contents of the txt file are copied at the bottom of this file
 pip install mfem
+pip install numba
 
 # now make MFEM using drl4marking branch - in /usr/workspace
 
