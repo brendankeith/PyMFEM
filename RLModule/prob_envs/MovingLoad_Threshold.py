@@ -6,8 +6,10 @@ from utils.StatisticsAndCost import Statistics, GlobalError
 from prob_envs.StationaryProblem import DeRefStationaryProblem
 import random
 from gym import spaces
+from numba import cfunc, carray
 
-def ball(pt, t):
+@cfunc(mfem.scalar_sig_t)
+def ball(pt, t, sdim):
     alpha = 0.01
     r0 = 0.25
     r00 = 0.1
@@ -20,10 +22,6 @@ def ball(pt, t):
     r = sqrt(x**2 + y**2)
     return 1/2-atan((r - r00)/alpha)/np.pi
 
-class RHSCoefficient(mfem.PyCoefficientT):
-    def EvalValue(self, pt, t):
-        return ball(pt, t)
-
 class MovingLoadProblem(DeRefStationaryProblem):
     
     def __init__(self,**kwargs):
@@ -34,10 +32,10 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.strict_dof_threshold = kwargs.get('strict_dof_threshold',10*self.dof_threshold)
         self.delta_t = 0.05
         delattr(self, 'RHS')
-        self.RHS = RHSCoefficient()
+        self.RHS = mfem.NumbaFunction(ball, 2, True).GenerateCoefficient()
         # self.observation_space = spaces.Box(low=np.array([-10,0.0,-np.inf,-np.inf,-np.inf,-np.inf]), high=np.array([10.0,1.0,np.inf,np.inf,np.inf,np.inf]), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
-        self.action_space = spaces.Box(low=np.array([-2.0, -1.0]), high=np.array([-1.0, 0.0]))
+        self.action_space = spaces.Box(low=np.array([-4.0, -1.0]), high=np.array([-2.0, 0.0]))
 
     def reset(self):
         self.time = random.uniform(-np.pi, np.pi)
@@ -71,7 +69,9 @@ class MovingLoadProblem(DeRefStationaryProblem):
                 self.rolling_average_dofs += log_num_dofs/self.k
             pen = 1e2
             # instantaneous_cost = (log_global_error - log_error_target)**2 + pen*max(0,self.rolling_average_dofs-log_dof_threshold)**2
-            instantaneous_cost = log_global_error + pen*max(0,self.rolling_average_dofs-log_dof_threshold)
+            instantaneous_cost = log_global_error + (log_dof_threshold - log_num_dofs)**2
+            # instantaneous_cost = log_global_error + pen*max(0,self.rolling_average_dofs - log_dof_threshold) + (log_dof_threshold - log_num_dofs)**2
+            # instantaneous_cost = log_global_error + pen*max(0,self.rolling_average_dofs-log_dof_threshold)
             # instantaneous_cost = log_global_error + (self.rolling_average_dofs-log_dof_threshold)**2
         elif self.optimization_type == 'error_threshold':
             if self.k == 1:
@@ -94,11 +94,11 @@ class MovingLoadProblem(DeRefStationaryProblem):
             self.rolling_average_cost *= (self.k-1)/self.k
             self.rolling_average_cost += instantaneous_cost/self.k
         ## exit if taking too long
-        # if num_dofs > self.strict_dof_threshold:
+        if num_dofs > self.strict_dof_threshold:
         #     cost += 1e3/max(1,self.k-10)**2
-        #     done = True
-        if random.uniform(0,1) < 0.05:
             done = True
+        # if random.uniform(0,1) < 0.01:
+            # done = True
         info = {'global_error':global_error, 'num_dofs':num_dofs, 'max_local_errors':np.amax(self.errors)}
         return obs, -cost, done, info
 
@@ -158,8 +158,7 @@ class MovingLoadProblem(DeRefStationaryProblem):
         self.Derefine(deref_threshold)
 
     def Refine(self,threshold):
-        self.GetNewErrors()
-        self.mesh.RefineByError(self.new_errors, threshold, -1, self.nc_limit)
+        self.mesh.RefineByError(self.mfem_errors, threshold, -1, self.nc_limit)
         self.fespace.Update()
         self.x.Update()
         self.a.Update()

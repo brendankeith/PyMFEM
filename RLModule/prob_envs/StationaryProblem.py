@@ -209,7 +209,11 @@ class StationaryProblem(gym.Env):
     def GetLocalErrors(self):
         self.estimator.Reset()
         self.mfem_errors = self.estimator.GetLocalErrors()
-        errors = np.array([self.mfem_errors[i] for i in range(self.mesh.GetNE())])# / self.solution_norm
+        errors = np.zeros(self.mesh.GetNE())
+        for i in range(self.mesh.GetNE()):
+            self.mfem_errors[i] /= self.solution_norm
+            errors[i] = self.mfem_errors[i]
+        # errors = np.array([self.mfem_errors[i] for i in range(self.mesh.GetNE())])
         return errors
 
     def RenderMesh(self):
@@ -287,7 +291,7 @@ class StationaryProblem(gym.Env):
         global_error_estimate = y.ComputeL2Error(grad_u_h)
         print("global error estimate = ", global_error_estimate)
 
-        grad_u = mfem.VectorNumbaFunction(ExactGrad, self.mesh.SpaceDimension(), self.mesh.Dimension()).GenerateCoefficient()
+        grad_u = mfem.VectorNumbaFunction(self.GradSoln, self.mesh.SpaceDimension(), self.mesh.Dimension()).GenerateCoefficient()
         global_error = self.x.ComputeH1Error(self.BC,grad_u)
         print("global error = ", global_error)
 

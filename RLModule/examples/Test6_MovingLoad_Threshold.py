@@ -48,37 +48,49 @@ prob_config = {
 
 # env = MovingLoadProblem(**prob_config)
 # env.reset()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
-# env.step(np.array([-4.0,-1.0]))
+# env.step(np.array([-4.0,-0.1]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-0.1]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-0.1]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-0.1]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-0.1]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-0.1]))
+# env.RenderMesh()
+# env.step(np.array([-4.0,-0.1]))
 # env.RenderMesh()
 
 nbatches = 150
-checkpoint_period = 500
+checkpoint_period = 1000
 
 config = ppo.DEFAULT_CONFIG.copy()
 config['train_batch_size'] = 200
 config['sgd_minibatch_size'] = 20
-config['rollout_fragment_length'] = 10
+config['rollout_fragment_length'] = 20
 config['num_workers'] = 6
 config['num_gpus'] = 0
 config['gamma'] = 1.0
 config['lr'] = 1e-4
-# config['no_done_at_end'] = False
-# config['soft_horizon'] = True
-# config['horizon'] = 40
+config['no_done_at_end'] = True
+config['soft_horizon'] = False
+config['horizon'] = 40
 
 ray.shutdown()
 ray.init(ignore_reinit_error=True)
@@ -106,7 +118,10 @@ if train:
             checkpoint_path = agent.save()
             print(checkpoint_path)
 else:
-    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-07-24_16-28-02typh4o46/checkpoint_000150/checkpoint-150'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-08-11_11-52-27znvhgv9m/checkpoint_000150/checkpoint-150'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-08-11_11-20-59eh6440vz/checkpoint_000115/checkpoint-115'
+    checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-08-11_08-53-57dxgwynyo/checkpoint_000115/checkpoint-115'
+    # checkpoint_path = '/Users/keith10/ray_results/PPO_my_env_2021-08-10_18-27-199awjnbit/checkpoint_000150/checkpoint-150'
 
 root_path, _ = os.path.split(checkpoint_path)
 root_path, _ = os.path.split(root_path)
