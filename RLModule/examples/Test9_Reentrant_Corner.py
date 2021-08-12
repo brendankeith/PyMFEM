@@ -47,12 +47,14 @@ data_deterministic_no_flagging = False  #Set this to True if you want to do a de
 data_deterministic = True              #Set this to True if you want to do a deterministic policy data collection with flagging.
                                         #Note that the deterministic policy with flagging is currently set up to run 100 values of theta
                                         #from 0.0 to 0.99, so it will override any theta value that is passed into it.
-training = False                         #Set this to True if you want to train a policy.
-evaluation = False                       #Set this to True if you want to evaluate a trained policy.  You must have training set to True as well or give a checkpoint path.
-distribution = True                     #Set this to True if you want to do either a distribution of deterministic policies or if you want to do
+training = True                         #Set this to True if you want to train a policy.
+evaluation = True                       #Set this to True if you want to evaluate a trained policy.  You must have training set to True as well or give a checkpoint path.
+distribution = False                     #Set this to True if you want to do either a distribution of deterministic policies or if you want to do
                                         #evaluations on on many meshes where you use the average episode cost as the value of interest.
+save_mesh_files = True
 
-total_episodes = 4000
+
+total_episodes = 1000
 batch_size = 16
 nbatches = int(total_episodes/batch_size)
 checkpoint_period = 0
@@ -79,7 +81,7 @@ if data_deterministic:
     env.hpDeterministicPolicy(0.6, Distribution = distribution)
 
 if training:
-    for j in range(2):
+    for j in range(1):
         #env.Continuation(j)
         episode = 0
         checkpoint_episode = 0
@@ -144,7 +146,7 @@ if evaluation == True:
         rows.append([average_episode_cost])
         env.RenderHPmesh()
         print("average episode cost = ", average_episode_cost)
-        with open('datafile', 'w') as datafile:
+        with open('datafile', 'a') as datafile:
             write = csv.writer(datafile)
             write.writerow(headers)
             write.writerows(rows)
@@ -164,6 +166,9 @@ if evaluation == True:
             obs, reward, done, info = env.step(action)
             episode_cost -= reward 
             rlcost = episode_cost
+            if save_mesh_files:
+                env.RenderHPmesh()
+                env.mesh.Save('mesh_file_step_' + str(env.k))
             # print("step = ", env.k)
             # print("action = ", action)
             # print("Num. Elems. = ", env.mesh.GetNE())
@@ -173,7 +178,7 @@ if evaluation == True:
             # env.compute_error_values()
         rows.append([action[0].item(), action[1].item(), env.mesh.GetNE(), env.fespace.GetTrueVSize(), 
                      env.sum_of_dofs, env.global_error, episode_cost])
-        env.RenderHPmesh()
+        #env.RenderHPmesh()
         print("episode cost = ", episode_cost)
         with open('datafile', 'w') as datafile:
             write = csv.writer(datafile)
