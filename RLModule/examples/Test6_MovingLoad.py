@@ -57,7 +57,7 @@ prob_config = {
 # env.step(np.array([0.9,0.1]))
 # env.RenderRHS()
 
-nbatches = 50
+nbatches = 2
 checkpoint_period = 100
 
 config = ppo.DEFAULT_CONFIG.copy()

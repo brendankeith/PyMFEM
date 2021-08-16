@@ -1,0 +1,148 @@
+description:
+    name: rate_check
+    description: use DelSp to do sampling-based rate check on sub-domains of a specified function
+
+env:
+    variables:
+        SCRIPTS: $(MERLIN_INFO)/scripts
+        REPO: /g/g12/gillette/projects/del_sp_lc/rate_check
+        # OUTPUT_PATH: /p/lustre1/gillette/
+
+        # Sample info (values are log_2 of dimensions to be used)
+        # --> HARD CODED VALUES now in h5py_data_maker
+        # MIN_ACTUAL: 1
+        # MAX_ACTUAL: 1
+        # N_ACTUAL: 1
+        # MIN_AMBIENT: 1
+        # MAX_AMBIENT: 1
+        # N_AMBIENT: 1
+        # TRAIN_COUNT: 50000
+        # VALID_COUNT: 10000
+        # TEST_COUNT: 10000 # *** must be divisible by 10, else messes up step_1
+
+
+
+######### everything below is just copied
+#########
+
+
+# merlin:
+#     samples:       
+#         # generate:
+#         #     cmd: |
+#         #         echo hello
+#         # file: /usr/workspace/gillette/vae_ptf_prod/toy_prod/toy_samples_HC.csv
+#         # column_labels: [ACTUAL,AMBIENT,NOISE,LATENT]
+
+#         generate:
+#             cmd: |
+#                 mkdir $(SCRIPTS)
+#                 cp $(REPO)/toy_data_maker/h5py_data_maker.py $(SCRIPTS)
+#                 cp $(REPO)/toy_data_maker/gen_sphere.py $(SCRIPTS)
+#                 cd $(SCRIPTS)
+#                 python $(SCRIPTS)/h5py_data_maker.py $(TRAIN_COUNT) $(VALID_COUNT) $(TEST_COUNT) $(MERLIN_INFO)/toy_samples.csv
+#                 cp *h5 /usr/workspace/gillette/vae_ptf_prod/toy_h5_files/
+#                 cd -
+#         file: $(MERLIN_INFO)/toy_samples.csv
+#         column_labels: [ACTUAL,AMBIENT,NOISE,LATENT]
+
+ 
+#     resources:
+#         workers:
+#             simworkers:
+#                 args: -l INFO --concurrency 1 --prefetch-multiplier 1 -Ofair
+#                 batch:
+#                   type: slurm
+
+# study:
+#     - name: step_0
+#       description: train VAE only
+#       run:
+#           cmd: |
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/pool_then_flow_all.py .
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/data.py .
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/flow.py .
+#               python pool_then_flow_all.py --hd5file toy --actual_size $(ACTUAL) --data_size $(AMBIENT) --pooled_size $(AMBIENT) --noise $(NOISE) --latent_size $(LATENT) --train_vae
+#           depends: []
+            
+
+#     - name: step_1
+#       description: Make case directories
+#       run:
+#           cmd: |
+#               AC=$(ACTUAL)
+#               DS=$(AMBIENT)
+#               NS=$(NOISE)
+#               LS=$(LATENT)
+#               mkdir /p/lustre1/gillette/toy_lus/res_ac_${AC}_am_${DS}_ns_${NS}_lt_${LS}
+#               cd /p/lustre1/gillette/toy_lus/res_ac_${AC}_am_${DS}_ns_${NS}_lt_${LS}
+#               let CASE_STEP=$(TEST_COUNT)/10
+#               let CASE_MAX=9*$CASE_STEP+1
+#               for ((j=0; j<$CASE_MAX; j=j+$CASE_STEP))
+#               do
+#                   mkdir case${j}
+#                   cd case${j}
+#                   mkdir coordPredict
+#                   cd ..
+#               done
+#           depends: [step_0]
+          
+
+#     - name: step_2
+#       description: evaluate VAE in case dirs and prep files for DelSp
+#       run:
+#           cmd: |
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/just-eval-and-prep-toy.sh .
+#               AC=$(ACTUAL)
+#               DS=$(AMBIENT)
+#               NS=$(NOISE)
+#               LS=$(LATENT)
+#               let CASE_STEP=$(TEST_COUNT)/10
+#               ./just-eval-and-prep-toy.sh ${AC} ${DS} ${NS} ${LS} ${CASE_STEP}
+#           depends: [step_1]
+
+
+#     - name: step_3
+#       description: run DelSp
+#       run:
+#           cmd: |
+#               AC=$(ACTUAL)
+#               DS=$(AMBIENT)
+#               NS=$(NOISE)
+#               LS=$(LATENT)
+#               let CASE_STEP=$(TEST_COUNT)/10
+#               cd /p/lustre1/gillette/toy_lus/res_ac_${AC}_am_${DS}_ns_${NS}_lt_${LS}
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/just-delsparse-toy.sh .
+#               ./just-delsparse-toy.sh ${AC} ${DS} ${NS} ${LS} ${CASE_STEP}
+#           depends: [step_2]
+
+
+#     - name: step_4
+#       description: postprocess and cleanup
+#       run:
+#           cmd: |
+#               AC=$(ACTUAL)
+#               DS=$(AMBIENT)
+#               NS=$(NOISE)
+#               LS=$(LATENT)
+#               cd /p/lustre1/gillette/toy_lus/res_ac_${AC}_am_${DS}_ns_${NS}_lt_${LS}
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/pool_then_flow_all.py .
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/data.py .
+#               cp /g/g12/gillette/projects/del_sp_lc/vae/flow.py .
+#               python pool_then_flow_all.py --hd5file toy --actual_size $(ACTUAL) --data_size $(AMBIENT) --pooled_size $(AMBIENT) --noise $(NOISE) --latent_size $(LATENT) --postprocess  > zz_pp_ac_${AC}_am_${DS}_ns_${NS}_lt_${LS}.txt
+#               cp zz_pp_ac_${AC}_am_${DS}_ns_${NS}_lt_${LS}.txt $(SPECROOT)/../results
+#               cat zz-out-postProc.csv >> $(SPECROOT)/../results/all_toy_results.txt
+#           depends: [step_3]
+
+
+
+#     - name: step_5
+#       description: print a success message
+#       run:
+#           cmd: date
+#             #   print("It's all over!")
+#           depends: [step_4]
+#         #   nodes: 1
+#         #   procs: 1
+#         #   cores per task: 3
+#         #   shell: /usr/bin/env python3
