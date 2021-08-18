@@ -368,6 +368,11 @@ class GridFunction(mfem._ser.vector.Vector):
         return _gridfunc.GridFunction_ComputeGradError(self, exgrad, irs)
     ComputeGradError = _swig_new_instance_method(_gridfunc.GridFunction_ComputeGradError)
 
+    def ComputeElementGradErrors(self, exgrad, errors, irs=0):
+        r"""ComputeElementGradErrors(GridFunction self, VectorCoefficient exgrad, Vector errors, mfem::IntegrationRule const *[] irs=0) -> double"""
+        return _gridfunc.GridFunction_ComputeElementGradErrors(self, exgrad, errors, irs)
+    ComputeElementGradErrors = _swig_new_instance_method(_gridfunc.GridFunction_ComputeElementGradErrors)
+
     def ComputeCurlError(self, excurl, irs=0):
         r"""ComputeCurlError(GridFunction self, VectorCoefficient excurl, mfem::IntegrationRule const *[] irs=0) -> double"""
         return _gridfunc.GridFunction_ComputeCurlError(self, excurl, irs)
@@ -393,6 +398,11 @@ class GridFunction(mfem._ser.vector.Vector):
         """
         return _gridfunc.GridFunction_ComputeH1Error(self, *args)
     ComputeH1Error = _swig_new_instance_method(_gridfunc.GridFunction_ComputeH1Error)
+
+    def ComputeElementH1Errors(self, exsol, exgrad, errors, irs=0):
+        r"""ComputeElementH1Errors(GridFunction self, Coefficient exsol, VectorCoefficient exgrad, Vector errors, mfem::IntegrationRule const *[] irs=0) -> double"""
+        return _gridfunc.GridFunction_ComputeElementH1Errors(self, exsol, exgrad, errors, irs)
+    ComputeElementH1Errors = _swig_new_instance_method(_gridfunc.GridFunction_ComputeElementH1Errors)
 
     def ComputeHDivError(self, exsol, exdiv, irs=0):
         r"""ComputeHDivError(GridFunction self, VectorCoefficient exsol, Coefficient exdiv, mfem::IntegrationRule const *[] irs=0) -> double"""
@@ -741,6 +751,11 @@ def Extrude1DGridFunction(mesh, mesh2d, sol, ny):
     r"""Extrude1DGridFunction(Mesh mesh, Mesh mesh2d, GridFunction sol, int const ny) -> GridFunction"""
     return _gridfunc.Extrude1DGridFunction(mesh, mesh2d, sol, ny)
 Extrude1DGridFunction = _gridfunc.Extrude1DGridFunction
+
+def ProlongToMaxOrder(x):
+    r"""ProlongToMaxOrder(GridFunction x) -> GridFunction"""
+    return _gridfunc.ProlongToMaxOrder(x)
+ProlongToMaxOrder = _gridfunc.ProlongToMaxOrder
 
 def __iadd__(self, v):
     ret = _gridfunc.GridFunction_iadd(self, v)

@@ -457,6 +457,11 @@ class FiniteElementSpace(object):
 
 
 
+    def GetVDofs(self, vd, dofs, ndofs=-1):
+        r"""GetVDofs(FiniteElementSpace self, int vd, intArray dofs, int ndofs=-1)"""
+        return _fespace.FiniteElementSpace_GetVDofs(self, vd, dofs, ndofs)
+    GetVDofs = _swig_new_instance_method(_fespace.FiniteElementSpace_GetVDofs)
+
     def DofsToVDofs(self, *args):
         r"""
         DofsToVDofs(FiniteElementSpace self, intArray dofs, int ndofs=-1)
