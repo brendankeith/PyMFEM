@@ -19,6 +19,7 @@ import numpy as np
 from drawnow import drawnow, figure
 import csv
 
+from sys import exit
 from optparse import OptionParser
 
 
@@ -230,12 +231,12 @@ if __name__ == '__main__':
         dest="jobid", type=int, default=999999)   
     parser.add_option("--detnoflag", dest="do_detnoflag", action="store_true", default=False,
 	    help="Deterministic policy data collection with no flagging. Default False.")
-    parser.add_option("--detwithflag", dest="do_detflag", action="store_true", default=False,
+    parser.add_option("--detwithflag", dest="do_detwithflag", action="store_true", default=False,
 	    help="Deterministic policy data collection with flagging. Currently set up to run 100 values of theta from 0.0 to 0.99; will override any theta value that is passed in. Default False.")
     parser.add_option("--train", dest="do_train", action="store_true", default=False,
 	    help="Do RL training. Default False.")
-    parser.add_option("--eval", dest="do_eval", action="store_true", default=False,
-	    help="Evaluate a trained policy. You must have training set to True as well or give a checkpoint path. Default False. ***** MODIFY THIS OPTION")
+    parser.add_option( "--evalfrom", help="Checkpoint path from which to evaluate RL.  Use 'train' to evaluate from training.  Default 'empty' does no evaluation.  ", 
+        dest="eval_from", type=str, default="empty")   
     parser.add_option("--dist", dest="do_dist", action="store_true", default=False,
 	    help="Do either a distribution of deterministic policies or evaluations on on many meshes where you use the average episode cost as the value of interest. Default False. ***** MODIFY THIS OPTION")
     parser.add_option("--savemesh", dest="save_mesh", action="store_true", default=False,
@@ -258,7 +259,14 @@ if __name__ == '__main__':
     def echo_options(options):
         print("User-input options:")
         print("Job ID      :", options.jobid)
-        print("Detwithflag?:", options.do_detflag)
+        if options.do_detwithflag:
+            print("Deterministic policy data collection WITH    flagging.")
+        if options.do_detnoflag:
+            print("Deterministic policy data collection WITHOUT flagging.")
+        print("Training?   :", options.do_train)
+        print("Eval from   :", options.eval_from)
+        print("Dist options:", options.do_dist)
+        print("Save mesh?  :", options.save_mesh)
         # print("Exprmt  type:", options.exptype)
         # print("Learn ratio: ", options.learnratio)
         # print("Num hdn lyrs:", options.numhiddenlyrs)
@@ -270,5 +278,7 @@ if __name__ == '__main__':
         #     exit()
 
     echo_options(options)
+    print("HARD EXIT")
+    exit()
     run_experiment()
 
