@@ -34,35 +34,58 @@ def run_experiment():
         plt.plot(avg_scores, 'b-')
 
     prob_config = {
-        # 'mesh_name'         : 'star.mesh',
-        'mesh_name'         : 'l-shape-benchmark.mesh', #'l-shape-benchmark.mesh','circle_3_4.mesh'
-        'mesh_name_two'     : 'circle_3_4.mesh',
+        'mesh_name'         : options.mesh,
+        'mesh_name_two'     : options.mesh_for_eval,
         'num_unif_ref'      : 1, 
         # 'num_random_ref'    : 2,
-        'refinement_strategy' : 'max', #'max', 'quantile', 'dorfler'
+        'refinement_strategy' : options.ref_strat,
         'mode' : 'hp', #'hp', 'h'
         'order'             : 1,
-        'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+        'optimization_type' : options.opt_type,
         'BC_type' : 'Exact', #Homogeneous, Exact, Random
         'mesh_type'         :  'RandomAngle', #RandomAngle, Fixed
         # 'random_mesh'       : True
         #'error_threshold' : 2e-2,  #default is 1e-3
-        'dof_threshold' : 1e4 #default is 1e4
+        'dof_threshold' : options.dof_thresh
     }
+    # print("")
+    # print("NEW PROB CONFIG")
+    # print(prob_config)
 
-    data_deterministic_no_flagging = False  #Set this to True if you want to do a deterministic policy data collection with no flagging.
-    data_deterministic = True              #Set this to True if you want to do a deterministic policy data collection with flagging.
-                                            #Note that the deterministic policy with flagging is currently set up to run 100 values of theta
-                                            #from 0.0 to 0.99, so it will override any theta value that is passed into it.
-    training = True                         #Set this to True if you want to train a policy.
-    evaluation = True                       #Set this to True if you want to evaluate a trained policy.  You must have training set to True as well or give a checkpoint path.
-    distribution = False                     #Set this to True if you want to do either a distribution of deterministic policies or if you want to do
-                                            #evaluations on on many meshes where you use the average episode cost as the value of interest.
-    save_mesh_files = True
+    # prob_config = {
+    #     # 'mesh_name'         : 'star.mesh',
+    #     'mesh_name'         : 'l-shape-benchmark.mesh', #'l-shape-benchmark.mesh','circle_3_4.mesh'
+    #     'mesh_name_two'     : 'circle_3_4.mesh',
+    #     'num_unif_ref'      : 1, 
+    #     # 'num_random_ref'    : 2,
+    #     'refinement_strategy' : 'max', #'max', 'quantile', 'dorfler'
+    #     'mode' : 'hp', #'hp', 'h'
+    #     'order'             : 1,
+    #     'optimization_type' : 'dof_threshold', # 'error_threshold', 'dof_threshold', 'step_threshold'
+    #     'BC_type' : 'Exact', #Homogeneous, Exact, Random
+    #     'mesh_type'         :  'RandomAngle', #RandomAngle, Fixed
+    #     # 'random_mesh'       : True
+    #     #'error_threshold' : 2e-2,  #default is 1e-3
+    #     'dof_threshold' : 1e4 #default is 1e4
+    # }
+
+    # print("")
+    # print("OLD PROB CONFIG")
+    # print(prob_config)
+
+    # data_deterministic_no_flagging = False  #Set this to True if you want to do a deterministic policy data collection with no flagging.
+    # data_deterministic = True              #Set this to True if you want to do a deterministic policy data collection with flagging.
+    #                                         #Note that the deterministic policy with flagging is currently set up to run 100 values of theta
+    #                                         #from 0.0 to 0.99, so it will override any theta value that is passed into it.
+    # training = True                         #Set this to True if you want to train a policy.
+    # evaluation = True                       #Set this to True if you want to evaluate a trained policy.  You must have training set to True as well or give a checkpoint path.
+    # distribution = False                     #Set this to True if you want to do either a distribution of deterministic policies or if you want to do
+    #                                         #evaluations on on many meshes where you use the average episode cost as the value of interest.
+    # save_mesh_files = True
 
 
-    total_episodes = 100 # 1000 in Test9
-    batch_size = 16
+    total_episodes = options.total_episodes # 1000 in Test9
+    batch_size = options.batch_size
     nbatches = int(total_episodes/batch_size)
     checkpoint_period = 0
 
@@ -82,12 +105,12 @@ def run_experiment():
     register_env("my_env", lambda config : PacmanProblem(**prob_config))
     agent = ppo.PPOTrainer(env="my_env", config=config)
 
-    checkpoint_path = "/home/justin/ray_results/PPO_my_env_2021-08-06_13-02-15djgz1kc7/checkpoint_000500/checkpoint-500"
+    # checkpoint_path = "/home/justin/ray_results/PPO_my_env_2021-08-06_13-02-15djgz1kc7/checkpoint_000500/checkpoint-500"
 
-    if data_deterministic:
+    if options.do_detwithflag:
         env.hpDeterministicPolicy(0.6, Distribution = distribution)
 
-    if training:
+    if options.do_train:
         for j in range(1):
             #env.Continuation(j)
             episode = 0
@@ -124,15 +147,17 @@ def run_experiment():
         ax[0].set_xlabel("iteration")
         plt.show()
 
-    if evaluation == True:
-        #agent.restore(checkpoint_path)
-        prob_config['random_mesh'] = False
-
+    if (options.eval_from != 'empty'):
         import time
+        
+        if (options.eval_from != 'train'):
+            checkpoint_path = options.eval_from
+            agent.restore(checkpoint_path)
+        prob_config['random_mesh'] = False
         prob_config['num_random_ref'] = 0
         rows = []
 
-        if distribution:
+        if (options.do_dist): # will need to edit later
             total_cost = 0.0
             num_episodes = 20
             headers = ['Average Cost']
@@ -173,7 +198,7 @@ def run_experiment():
                 obs, reward, done, info = env.step(action)
                 episode_cost -= reward 
                 rlcost = episode_cost
-                if save_mesh_files:
+                if options.save_mesh:
                     env.RenderHPmesh()
                     env.mesh.Save('mesh_file_step_' + str(env.k))
                 # print("step = ", env.k)
@@ -192,7 +217,7 @@ def run_experiment():
                 write.writerow(headers)
                 write.writerows(rows)
 
-    if data_deterministic_no_flagging == True:
+    if (options.do_detnoflag):
         headers = ['theta', 'rho', 'N', 'DoFs', 'Total_DoFs', 'Error_Estimate', 'Cost']#, 'L2_Error', 'H1_Error']
         rows = []
         for j in range(10):
@@ -227,24 +252,34 @@ if __name__ == '__main__':
     doc_string = "\nSpecify function from test_functions.py.  Compare neural net model to DelaunaySparse model"
     usage = doc_string + "\nUsage: %prog [options]"
     parser = OptionParser(usage)
-    parser.add_option( "--jobid", help="Job ID (from SLURM).", 
-        dest="jobid", type=int, default=999999)   
+    parser.add_option( "--jobid", dest="jobid", type=int, default=999999,
+        help="Job ID (from SLURM).")   
     parser.add_option("--detnoflag", dest="do_detnoflag", action="store_true", default=False,
 	    help="Deterministic policy data collection with no flagging. Default False.")
     parser.add_option("--detwithflag", dest="do_detwithflag", action="store_true", default=False,
 	    help="Deterministic policy data collection with flagging. Currently set up to run 100 values of theta from 0.0 to 0.99; will override any theta value that is passed in. Default False.")
     parser.add_option("--train", dest="do_train", action="store_true", default=False,
 	    help="Do RL training. Default False.")
-    parser.add_option( "--evalfrom", help="Checkpoint path from which to evaluate RL.  Use 'train' to evaluate from training.  Default 'empty' does no evaluation.  ", 
-        dest="eval_from", type=str, default="empty")   
+    parser.add_option( "--evalfrom", dest="eval_from", type=str, default="empty",
+        help="Checkpoint path from which to evaluate RL.  Use 'train' to evaluate from training.  Default 'empty' does no evaluation.  ")   
     parser.add_option("--dist", dest="do_dist", action="store_true", default=False,
 	    help="Do either a distribution of deterministic policies or evaluations on on many meshes where you use the average episode cost as the value of interest. Default False. ***** MODIFY THIS OPTION")
     parser.add_option("--savemesh", dest="save_mesh", action="store_true", default=False,
-	    help="Save mesh files at each step.  Default False")
-    
-    # total_episodes = 100 # 1000 in Test9
-    # batch_size = 16
-
+	    help="Save mesh files at each step.  Default False.")
+    parser.add_option( "--episodes", dest="total_episodes", type=int,  
+        help="Total number of episodes for training. Default 1000.", default=1000)
+    parser.add_option( "--batchsize", dest="batch_size", type=int,  
+        help="Batch size. Default 16.", default=16)
+    parser.add_option( "--mesh", dest="mesh", type=str, default="l-shape-benchmark.mesh",
+        help="Mesh file for training or deterministic policy.  l-shape-benchmark.mesh (Default) or circle_3_4.mesh")
+    parser.add_option( "--evalmesh", dest="mesh_for_eval", type=str, default="empty", 
+        help="Mesh file for evaluation.  Default is to use same as --mesh option. ") 
+    parser.add_option( "--refstrat",  dest="ref_strat", type=str, default="max",
+        help="Refinement strategy: max (default), quantile, or dorfler.") 
+    parser.add_option( "--opttype", dest="opt_type", type=str, default="dof_threshold",
+        help="Optimization type: dof_threshold (default), error_threshold, or step_threshold.") 
+    parser.add_option( "--dofthresh", dest="dof_thresh", type=int, default=1e4,
+        help="Degree of freedom threshold (if opttype = dof_threshold).  Default 1e4. ") 
     # parser.add_option("--exp", dest="exptype", type=int, default=1,
     #     help="Experiment type: 1 = compare DS and NN.  2 = increase sample and DS only.  Default = 1.")
     # parser.add_option( "--fn", help="Test function to use: options include griewank, rosenbrock, paraboloid, michalewicz (default).", 
@@ -267,6 +302,16 @@ if __name__ == '__main__':
         print("Eval from   :", options.eval_from)
         print("Dist options:", options.do_dist)
         print("Save mesh?  :", options.save_mesh)
+        print("Episodes    :", options.total_episodes)
+        print("Batch size  :", options.batch_size)
+        print("Mesh file   :", options.mesh)
+        if (options.mesh_for_eval == 'empty'):
+            options.mesh_for_eval = options.mesh
+        print("Eval mesh   :", options.mesh_for_eval)
+        print("Refmt strat :", options.ref_strat)
+        print("Optmzn type :", options.opt_type)
+        if (options.opt_type == 'dof_threshold'):
+            print("Dof thresh  :", options.dof_thresh)
         # print("Exprmt  type:", options.exptype)
         # print("Learn ratio: ", options.learnratio)
         # print("Num hdn lyrs:", options.numhiddenlyrs)
@@ -278,7 +323,5 @@ if __name__ == '__main__':
         #     exit()
 
     echo_options(options)
-    print("HARD EXIT")
-    exit()
     run_experiment()
 
