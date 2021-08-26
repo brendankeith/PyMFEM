@@ -108,7 +108,8 @@ def run_experiment():
     # checkpoint_path = "/home/justin/ray_results/PPO_my_env_2021-08-06_13-02-15djgz1kc7/checkpoint_000500/checkpoint-500"
 
     if options.do_detwithflag:
-        env.hpDeterministicPolicy(0.6, Distribution = distribution)
+        # if do_dist, set run deterministic policy for T=0.00 to T=0.99, increments of 0.01
+        env.hpDeterministicPolicy(0.6, Distribution = options.do_dist)
 
     if options.do_train:
         for j in range(1):
